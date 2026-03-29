@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>SLP Compliance Audit</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 :root {
   --primary: #1a5276;
@@ -24,13 +25,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .header h1 { font-size: 16px; font-weight: 600; }
 .header .subtitle { font-size: 12px; opacity: 0.85; margin-top: 2px; }
 
-/* Tab Navigation */
 .tab-nav { display: flex; overflow-x: auto; background: var(--white); border-bottom: 2px solid var(--border); position: sticky; top: 52px; z-index: 99; -webkit-overflow-scrolling: touch; }
 .tab-nav::-webkit-scrollbar { display: none; }
 .tab-btn { flex: 0 0 auto; padding: 10px 14px; font-size: 12px; font-weight: 600; border: none; background: none; color: var(--gray); cursor: pointer; white-space: nowrap; border-bottom: 3px solid transparent; transition: all 0.2s; }
 .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); background: #e8f4fd; }
 
-/* Audit Info */
 .audit-info { background: var(--white); padding: 16px; margin: 8px; border-radius: 10px; box-shadow: var(--shadow); }
 .audit-info h2 { font-size: 15px; color: var(--primary); margin-bottom: 12px; }
 .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -39,7 +38,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .info-field input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px; transition: border-color 0.2s; }
 .info-field input:focus { outline: none; border-color: var(--primary-light); }
 
-/* Score Bar */
 .score-bar { background: var(--white); margin: 0 8px 8px; padding: 14px 16px; border-radius: 10px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 12px; position: sticky; top: 95px; z-index: 98; }
 .score-bar .score-label { font-size: 12px; font-weight: 600; color: #666; white-space: nowrap; }
 .score-bar .progress-track { flex: 1; height: 10px; background: #e9ecef; border-radius: 5px; overflow: hidden; }
@@ -47,7 +45,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .score-bar .score-pct { font-size: 16px; font-weight: 700; min-width: 52px; text-align: right; }
 .score-bar .score-pts { font-size: 11px; color: #888; }
 
-/* Section */
 .section-card { background: var(--white); margin: 8px; border-radius: 10px; box-shadow: var(--shadow); overflow: hidden; }
 .section-header { padding: 12px 16px; background: #f8f9fa; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
 .section-header h3 { font-size: 14px; color: var(--primary); }
@@ -58,7 +55,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .section-items { display: none; }
 .section-items.open { display: block; }
 
-/* Item */
 .item { padding: 14px 16px; border-bottom: 1px solid #f0f0f0; }
 .item:last-child { border-bottom: none; }
 .item-header { display: flex; gap: 8px; margin-bottom: 8px; }
@@ -69,18 +65,32 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .wt-2 { background: #fef9e7; color: #f39c12; }
 .wt-3 { background: #fdedec; color: #e74c3c; }
 
-/* Answer Buttons */
 .answer-row { display: flex; gap: 6px; margin-bottom: 8px; }
 .answer-btn { flex: 1; padding: 9px 4px; border: 2px solid var(--border); border-radius: 8px; font-size: 11px; font-weight: 600; background: var(--white); cursor: pointer; transition: all 0.15s; text-align: center; }
 .answer-btn.compliant.selected { background: #27ae60; color: white; border-color: #27ae60; }
 .answer-btn.non-compliant.selected { background: #e74c3c; color: white; border-color: #e74c3c; }
 .answer-btn.na.selected { background: #95a5a6; color: white; border-color: #95a5a6; }
 
-/* Comments */
 .comment-input { width: 100%; padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; resize: vertical; min-height: 36px; font-family: inherit; }
 .comment-input:focus { outline: none; border-color: var(--primary-light); }
 
-/* Summary Dashboard */
+/* Photo styles */
+.photo-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.photo-btn { display: flex; align-items: center; gap: 4px; padding: 7px 12px; border: 2px dashed var(--border); border-radius: 8px; font-size: 12px; font-weight: 600; background: var(--light); cursor: pointer; color: #555; transition: all 0.15s; }
+.photo-btn:hover { border-color: var(--primary-light); color: var(--primary); }
+.photo-btn svg { width: 16px; height: 16px; }
+.photo-thumbs { display: flex; gap: 6px; flex-wrap: wrap; }
+.photo-thumb { position: relative; width: 56px; height: 56px; border-radius: 6px; overflow: hidden; border: 2px solid var(--border); }
+.photo-thumb img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; }
+.photo-thumb .photo-delete { position: absolute; top: -4px; right: -4px; width: 20px; height: 20px; border-radius: 50%; background: var(--danger); color: white; border: none; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
+.photo-count { font-size: 11px; color: #888; }
+
+/* Photo modal */
+.photo-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 300; display: flex; align-items: center; justify-content: center; }
+.photo-modal img { max-width: 95vw; max-height: 90vh; object-fit: contain; border-radius: 8px; }
+.photo-modal-close { position: absolute; top: 12px; right: 16px; color: white; font-size: 32px; cursor: pointer; background: none; border: none; z-index: 301; }
+
+/* Dashboard */
 .dashboard { padding: 8px; }
 .dash-card { background: var(--white); border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 10px; overflow: hidden; }
 .dash-card-header { padding: 12px 16px; font-size: 14px; font-weight: 700; color: white; display: flex; justify-content: space-between; }
@@ -94,18 +104,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .dash-section-score { font-weight: 700; min-width: 50px; text-align: right; }
 .dash-total { padding: 10px 16px; font-weight: 700; font-size: 14px; background: #f8f9fa; display: flex; justify-content: space-between; }
 
-/* Export */
 .export-section { padding: 16px 8px; }
 .export-btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; color: white; cursor: pointer; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .export-btn.excel { background: #217346; }
 .export-btn.save { background: var(--primary); }
 .export-btn.clear { background: var(--danger); }
+.export-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-/* Toast */
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 8px; font-size: 14px; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
 .toast.show { opacity: 1; }
 
-/* Responsive */
 @media (max-width: 400px) {
   .info-grid { grid-template-columns: 1fr; }
   .answer-btn { font-size: 10px; padding: 8px 2px; }
@@ -128,9 +136,100 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 </div>
 
 <div id="content"></div>
+<div id="photoModal"></div>
 <div class="toast" id="toast"></div>
+<input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none">
 
 <script>
+// ===== INDEXED DB FOR PHOTOS =====
+const DB_NAME = 'slp_audit_photos';
+const DB_VERSION = 1;
+let db = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    if (db) return resolve(db);
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('photos')) {
+        d.createObjectStore('photos', { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = (e) => { db = e.target.result; resolve(db); };
+    req.onerror = (e) => reject(e);
+  });
+}
+
+async function savePhoto(auditKey, itemId, dataUrl) {
+  const d = await openDB();
+  const key = `${auditKey}_${itemId}`;
+  return new Promise((resolve, reject) => {
+    const tx = d.transaction('photos', 'readwrite');
+    const store = tx.objectStore('photos');
+    // Get existing photos for this item
+    const getReq = store.get(key);
+    getReq.onsuccess = () => {
+      const existing = getReq.result || { id: key, auditKey, itemId, photos: [] };
+      existing.photos.push(dataUrl);
+      store.put(existing);
+      tx.oncomplete = () => resolve();
+    };
+    getReq.onerror = reject;
+  });
+}
+
+async function getPhotos(auditKey, itemId) {
+  const d = await openDB();
+  const key = `${auditKey}_${itemId}`;
+  return new Promise((resolve) => {
+    const tx = d.transaction('photos', 'readonly');
+    const store = tx.objectStore('photos');
+    const req = store.get(key);
+    req.onsuccess = () => resolve(req.result?.photos || []);
+    req.onerror = () => resolve([]);
+  });
+}
+
+async function deletePhoto(auditKey, itemId, photoIdx) {
+  const d = await openDB();
+  const key = `${auditKey}_${itemId}`;
+  return new Promise((resolve) => {
+    const tx = d.transaction('photos', 'readwrite');
+    const store = tx.objectStore('photos');
+    const req = store.get(key);
+    req.onsuccess = () => {
+      const existing = req.result;
+      if (existing) {
+        existing.photos.splice(photoIdx, 1);
+        if (existing.photos.length === 0) store.delete(key);
+        else store.put(existing);
+      }
+      tx.oncomplete = () => resolve();
+    };
+  });
+}
+
+async function getAllPhotos() {
+  const d = await openDB();
+  return new Promise((resolve) => {
+    const tx = d.transaction('photos', 'readonly');
+    const store = tx.objectStore('photos');
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => resolve([]);
+  });
+}
+
+async function clearAllPhotos() {
+  const d = await openDB();
+  return new Promise((resolve) => {
+    const tx = d.transaction('photos', 'readwrite');
+    tx.objectStore('photos').clear();
+    tx.oncomplete = () => resolve();
+  });
+}
+
 // ===== AUDIT DATA =====
 const AUDITS = {
   licensing: {
@@ -439,27 +538,15 @@ const AUDITS = {
 };
 
 // ===== STATE =====
-let state = loadState() || {
-  activeTab: 'dashboard',
-  audits: {}
-};
+let state = loadState() || { activeTab: 'dashboard', audits: {} };
+let pendingPhotoTarget = null;
 
 function initAuditState(auditKey) {
   if (state.audits[auditKey]) return;
-  state.audits[auditKey] = {
-    info: { date: '', room: '', inspector: '', teacher1: '', teacher2: '' },
-    answers: {},
-    comments: {},
-    openSections: {}
-  };
+  state.audits[auditKey] = { info: { date: '', room: '', inspector: '', teacher1: '', teacher2: '' }, answers: {}, comments: {}, openSections: {} };
 }
-
-function loadState() {
-  try { return JSON.parse(localStorage.getItem('slp_audit_state')); } catch(e) { return null; }
-}
-function saveState() {
-  localStorage.setItem('slp_audit_state', JSON.stringify(state));
-}
+function loadState() { try { return JSON.parse(localStorage.getItem('slp_audit_state')); } catch(e) { return null; } }
+function saveState() { localStorage.setItem('slp_audit_state', JSON.stringify(state)); }
 
 // ===== SCORING =====
 function calcSectionScore(auditKey, sectionIdx) {
@@ -474,37 +561,98 @@ function calcSectionScore(auditKey, sectionIdx) {
   });
   return { achieved, max, pct: max > 0 ? Math.round((achieved / max) * 1000) / 10 : 0 };
 }
-
 function calcAuditTotal(auditKey) {
-  const audit = AUDITS[auditKey];
   let achieved = 0, max = 0;
-  audit.sections.forEach((_, i) => {
-    const s = calcSectionScore(auditKey, i);
-    achieved += s.achieved;
-    max += s.max;
-  });
+  AUDITS[auditKey].sections.forEach((_, i) => { const s = calcSectionScore(auditKey, i); achieved += s.achieved; max += s.max; });
   return { achieved, max, pct: max > 0 ? Math.round((achieved / max) * 1000) / 10 : 0 };
 }
+function getScoreClass(pct) { return pct >= 80 ? 'good' : pct >= 50 ? 'mid' : 'bad'; }
+function getScoreColor(pct) { return pct >= 80 ? '#27ae60' : pct >= 50 ? '#f39c12' : '#e74c3c'; }
 
-function getScoreClass(pct) {
-  if (pct >= 80) return 'good';
-  if (pct >= 50) return 'mid';
-  return 'bad';
+// ===== CAMERA =====
+const cameraInput = document.getElementById('cameraInput');
+cameraInput.addEventListener('change', async (e) => {
+  if (!e.target.files.length || !pendingPhotoTarget) return;
+  const file = e.target.files[0];
+  const dataUrl = await resizeImage(file, 1200);
+  await savePhoto(pendingPhotoTarget.auditKey, pendingPhotoTarget.itemId, dataUrl);
+  e.target.value = '';
+  await renderPhotoThumbs(pendingPhotoTarget.auditKey, pendingPhotoTarget.itemId);
+  showToast('Photo saved!');
+});
+
+function resizeImage(file, maxDim) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+          else { w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
-function getScoreColor(pct) {
-  if (pct >= 80) return '#27ae60';
-  if (pct >= 50) return '#f39c12';
-  return '#e74c3c';
+function triggerCamera(auditKey, itemId) {
+  pendingPhotoTarget = { auditKey, itemId };
+  cameraInput.click();
+}
+
+async function renderPhotoThumbs(auditKey, itemId) {
+  const container = document.getElementById(`photos_${auditKey}_${itemId}`);
+  if (!container) return;
+  const photos = await getPhotos(auditKey, itemId);
+  if (photos.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+  container.innerHTML = photos.map((p, i) =>
+    `<div class="photo-thumb">
+      <img src="${p}" onclick="viewPhoto('${auditKey}','${itemId}',${i})">
+      <button class="photo-delete" onclick="removePhoto('${auditKey}','${itemId}',${i})">x</button>
+    </div>`
+  ).join('') + `<span class="photo-count">${photos.length} photo${photos.length > 1 ? 's' : ''}</span>`;
+}
+
+async function removePhoto(auditKey, itemId, idx) {
+  await deletePhoto(auditKey, itemId, idx);
+  await renderPhotoThumbs(auditKey, itemId);
+}
+
+async function viewPhoto(auditKey, itemId, idx) {
+  const photos = await getPhotos(auditKey, itemId);
+  if (!photos[idx]) return;
+  document.getElementById('photoModal').innerHTML =
+    `<div class="photo-modal" onclick="this.remove()">
+      <button class="photo-modal-close" onclick="this.parentElement.remove()">&times;</button>
+      <img src="${photos[idx]}">
+    </div>`;
 }
 
 // ===== RENDER =====
-function render() {
+async function render() {
   const content = document.getElementById('content');
   if (state.activeTab === 'dashboard') {
     content.innerHTML = renderDashboard();
   } else {
     content.innerHTML = renderAudit(state.activeTab);
+    // Load photo thumbnails
+    const auditKey = state.activeTab;
+    for (const section of AUDITS[auditKey].sections) {
+      for (const item of section.items) {
+        await renderPhotoThumbs(auditKey, item.id);
+      }
+    }
   }
   bindEvents();
   saveState();
@@ -512,8 +660,6 @@ function render() {
 
 function renderDashboard() {
   let html = '<div class="dashboard">';
-
-  // Weight guide
   html += `<div class="audit-info" style="margin-bottom:10px">
     <div style="font-size:12px;color:#666;line-height:1.6">
       <strong>Weight Guide:</strong><br>
@@ -533,34 +679,19 @@ function renderDashboard() {
   auditMeta.forEach(m => {
     initAuditState(m.key);
     const total = calcAuditTotal(m.key);
-    html += `<div class="dash-card">
-      <div class="dash-card-header ${m.cls}">
-        <span>${m.label}</span>
-        <span>${total.pct}%</span>
-      </div>`;
-
+    html += `<div class="dash-card"><div class="dash-card-header ${m.cls}"><span>${m.label}</span><span>${total.pct}%</span></div>`;
     AUDITS[m.key].sections.forEach((sec, i) => {
       const s = calcSectionScore(m.key, i);
-      html += `<div class="dash-section-row">
-        <span class="dash-section-name">${sec.name}</span>
-        <span class="dash-section-score" style="color:${getScoreColor(s.pct)}">${s.achieved}/${s.max} (${s.pct}%)</span>
-      </div>`;
+      html += `<div class="dash-section-row"><span class="dash-section-name">${sec.name}</span><span class="dash-section-score" style="color:${getScoreColor(s.pct)}">${s.achieved}/${s.max} (${s.pct}%)</span></div>`;
     });
-
-    html += `<div class="dash-total">
-      <span>${m.label} - TOTAL</span>
-      <span style="color:${getScoreColor(total.pct)}">${total.achieved}/${total.max} (${total.pct}%)</span>
-    </div></div>`;
+    html += `<div class="dash-total"><span>${m.label} - TOTAL</span><span style="color:${getScoreColor(total.pct)}">${total.achieved}/${total.max} (${total.pct}%)</span></div></div>`;
   });
 
-  // Export buttons
   html += `<div class="export-section">
-    <button class="export-btn excel" onclick="exportToExcel()">Export to Excel (.xlsx)</button>
+    <button class="export-btn excel" onclick="exportToZip()" id="exportBtn">Export to ZIP (Excel + Photos)</button>
     <button class="export-btn save" onclick="saveProgress()">Save Progress Locally</button>
     <button class="export-btn clear" onclick="clearAll()">Clear All Data</button>
-  </div>`;
-
-  html += '</div>';
+  </div></div>`;
   return html;
 }
 
@@ -569,11 +700,9 @@ function renderAudit(auditKey) {
   const audit = AUDITS[auditKey];
   const auditState = state.audits[auditKey];
   const total = calcAuditTotal(auditKey);
+  const camSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`;
 
-  let html = '';
-
-  // Audit info
-  html += `<div class="audit-info">
+  let html = `<div class="audit-info">
     <h2>${audit.title}</h2>
     <div class="info-grid">
       <div class="info-field"><label>Date</label><input type="date" data-info="date" value="${auditState.info.date}"></div>
@@ -588,26 +717,19 @@ function renderAudit(auditKey) {
     </div>
   </div>`;
 
-  // Score bar
   html += `<div class="score-bar">
     <span class="score-label">OVERALL</span>
     <div class="progress-track"><div class="progress-fill" style="width:${total.pct}%;background:${getScoreColor(total.pct)}"></div></div>
-    <div>
-      <div class="score-pct" style="color:${getScoreColor(total.pct)}">${total.pct}%</div>
-      <div class="score-pts">${total.achieved}/${total.max}</div>
-    </div>
+    <div><div class="score-pct" style="color:${getScoreColor(total.pct)}">${total.pct}%</div><div class="score-pts">${total.achieved}/${total.max}</div></div>
   </div>`;
 
-  // Sections
   audit.sections.forEach((section, si) => {
     const score = calcSectionScore(auditKey, si);
     const isOpen = auditState.openSections[si];
-    html += `<div class="section-card">
-      <div class="section-header" data-toggle-section="${si}">
-        <h3>${section.name}</h3>
-        <span class="section-score ${getScoreClass(score.pct)}">${score.achieved}/${score.max} (${score.pct}%)</span>
-      </div>
-      <div class="section-items ${isOpen ? 'open' : ''}">`;
+    html += `<div class="section-card"><div class="section-header" data-toggle-section="${si}">
+      <h3>${section.name}</h3>
+      <span class="section-score ${getScoreClass(score.pct)}">${score.achieved}/${score.max} (${score.pct}%)</span>
+    </div><div class="section-items ${isOpen ? 'open' : ''}">`;
 
     section.items.forEach(item => {
       const ans = auditState.answers[item.id] || '';
@@ -623,18 +745,19 @@ function renderAudit(auditKey) {
           <button class="answer-btn non-compliant ${ans === 'non-compliant' ? 'selected' : ''}" data-item="${item.id}" data-answer="non-compliant">Non-Compliant</button>
           <button class="answer-btn na ${ans === 'na' ? 'selected' : ''}" data-item="${item.id}" data-answer="na">N/A</button>
         </div>
+        <div class="photo-row">
+          <button class="photo-btn" onclick="triggerCamera('${auditKey}','${item.id}')">${camSvg} Photo</button>
+          <div class="photo-thumbs" id="photos_${auditKey}_${item.id}"></div>
+        </div>
         <textarea class="comment-input" data-comment="${item.id}" placeholder="Comments / Action Required">${comment}</textarea>
       </div>`;
     });
-
     html += '</div></div>';
   });
-
   return html;
 }
 
 function bindEvents() {
-  // Tab navigation
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.onclick = () => {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -643,21 +766,13 @@ function bindEvents() {
       render();
     };
   });
-
   if (state.activeTab === 'dashboard') return;
-
   const auditKey = state.activeTab;
   const auditState = state.audits[auditKey];
 
-  // Info fields
   document.querySelectorAll('[data-info]').forEach(input => {
-    input.addEventListener('change', () => {
-      auditState.info[input.dataset.info] = input.value;
-      saveState();
-    });
+    input.addEventListener('change', () => { auditState.info[input.dataset.info] = input.value; saveState(); });
   });
-
-  // Section toggle
   document.querySelectorAll('[data-toggle-section]').forEach(el => {
     el.onclick = () => {
       const si = el.dataset.toggleSection;
@@ -666,30 +781,18 @@ function bindEvents() {
       saveState();
     };
   });
-
-  // Answer buttons
   document.querySelectorAll('.answer-btn').forEach(btn => {
     btn.onclick = () => {
       const itemId = btn.dataset.item;
       const answer = btn.dataset.answer;
-      // Toggle off if same answer clicked
-      if (auditState.answers[itemId] === answer) {
-        delete auditState.answers[itemId];
-      } else {
-        auditState.answers[itemId] = answer;
-      }
+      if (auditState.answers[itemId] === answer) delete auditState.answers[itemId];
+      else auditState.answers[itemId] = answer;
       saveState();
       render();
-      // Restore scroll position
     };
   });
-
-  // Comments
   document.querySelectorAll('[data-comment]').forEach(textarea => {
-    textarea.addEventListener('input', () => {
-      auditState.comments[textarea.dataset.comment] = textarea.value;
-      saveState();
-    });
+    textarea.addEventListener('input', () => { auditState.comments[textarea.dataset.comment] = textarea.value; saveState(); });
   });
 }
 
@@ -701,121 +804,142 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-// ===== SAVE/CLEAR =====
 function saveProgress() { saveState(); showToast('Progress saved!'); }
-
-function clearAll() {
-  if (confirm('Are you sure you want to clear ALL audit data? This cannot be undone.')) {
+async function clearAll() {
+  if (confirm('Are you sure you want to clear ALL audit data and photos? This cannot be undone.')) {
     state = { activeTab: 'dashboard', audits: {} };
     saveState();
+    await clearAllPhotos();
     render();
     showToast('All data cleared');
   }
 }
 
-// ===== EXCEL EXPORT =====
-function exportToExcel() {
-  const wb = XLSX.utils.book_new();
+// ===== AUDIT LABELS FOR FILE NAMING =====
+const AUDIT_LABELS = { licensing: 'Licensing', ahs: 'AHS', kitchen: 'Kitchen', pedagogy: 'Pedagogy' };
 
-  // --- Summary Dashboard ---
-  const dashData = [];
-  dashData.push(['Smart Little People  |  Compliance Audit Dashboard']);
-  dashData.push([]);
-  dashData.push([null, 'AUDIT SCORE SUMMARY']);
-  dashData.push([null, 'Audit Type', 'Section', 'Achieved', 'Max', 'Score %']);
+// ===== ZIP EXPORT (Excel + Photos) =====
+async function exportToZip() {
+  const btn = document.getElementById('exportBtn');
+  btn.disabled = true;
+  btn.textContent = 'Preparing export...';
 
-  const auditMeta = [
-    { key: 'licensing', label: 'Childcare Licensing' },
-    { key: 'ahs', label: 'Alberta Health (AHS)' },
-    { key: 'kitchen', label: 'Kitchen' },
-    { key: 'pedagogy', label: 'Prog. & Pedagogy' }
-  ];
+  try {
+    const zip = new JSZip();
+    const compliantFolder = zip.folder('Compliant_Photos');
+    const nonCompliantFolder = zip.folder('Non_Compliant_Photos');
 
-  auditMeta.forEach(m => {
-    initAuditState(m.key);
-    let first = true;
-    AUDITS[m.key].sections.forEach((sec, i) => {
-      const s = calcSectionScore(m.key, i);
-      dashData.push([null, first ? m.label : null, sec.name, s.achieved, s.max, s.pct / 100]);
-      first = false;
-    });
-    const total = calcAuditTotal(m.key);
-    dashData.push([null, m.label + '  - TOTAL', null, total.achieved, total.max, total.pct / 100]);
-    dashData.push([]);
-  });
+    // Build Excel
+    const wb = XLSX.utils.book_new();
 
-  const dashWs = XLSX.utils.aoa_to_sheet(dashData);
-  dashWs['!cols'] = [{wch:4},{wch:24},{wch:38},{wch:10},{wch:8},{wch:10}];
-  // Format percentage cells
-  for (let r = 0; r < dashData.length; r++) {
-    const cell = dashWs[XLSX.utils.encode_cell({r, c:5})];
-    if (cell && typeof cell.v === 'number') { cell.z = '0.0%'; }
-  }
-  XLSX.utils.book_append_sheet(wb, dashWs, 'Summary Dashboard');
-
-  // --- Each audit sheet ---
-  const sheetNames = {
-    licensing: 'Childcare Licensing',
-    ahs: 'AHS Audit',
-    kitchen: 'Kitchen Audit',
-    pedagogy: 'Programming & Pedagogy'
-  };
-
-  Object.keys(AUDITS).forEach(auditKey => {
-    initAuditState(auditKey);
-    const audit = AUDITS[auditKey];
-    const auditState = state.audits[auditKey];
-    const info = auditState.info;
-    const data = [];
-
-    data.push([`Smart Little People  |  ${audit.title}`]);
-    data.push(['Date:', info.date, null, null, 'Room / Classroom:', info.room]);
-    data.push(['Inspector:', info.inspector, null, null, 'Teacher 1:', info.teacher1]);
-    data.push(['Teacher 2:', info.teacher2]);
-    data.push(['Weight:  1 = Standard (Low admin penalty risk)  |  2 = Important (Medium penalty risk $250-$4,000)  |  3 = Critical (High penalty risk $500-$10,000)']);
-    data.push(['#', 'Compliance Area', 'Wt', 'Answer', 'Pts', 'Max', 'Comments / Action Required']);
-
-    audit.sections.forEach((section, si) => {
-      data.push([`Section ${section.name}`]);
-      section.items.forEach(item => {
-        const ans = auditState.answers[item.id] || '';
-        let answerText = '';
-        let pts = 0;
-        let max = item.wt;
-        if (ans === 'compliant') { answerText = 'Compliant'; pts = item.wt; }
-        else if (ans === 'non-compliant') { answerText = 'Non-Compliant'; pts = 0; }
-        else if (ans === 'na') { answerText = 'N/A'; pts = 0; max = 0; }
-        const comment = auditState.comments[item.id] || '';
-        data.push([item.id, item.text, item.wt, answerText, pts, max, comment]);
+    // Summary Dashboard sheet
+    const dashData = [['Smart Little People  |  Compliance Audit Dashboard'],[],[null,'AUDIT SCORE SUMMARY'],[null,'Audit Type','Section','Achieved','Max','Score %']];
+    const auditMeta = [
+      { key: 'licensing', label: 'Childcare Licensing' },
+      { key: 'ahs', label: 'Alberta Health (AHS)' },
+      { key: 'kitchen', label: 'Kitchen' },
+      { key: 'pedagogy', label: 'Prog. & Pedagogy' }
+    ];
+    auditMeta.forEach(m => {
+      initAuditState(m.key);
+      let first = true;
+      AUDITS[m.key].sections.forEach((sec, i) => {
+        const s = calcSectionScore(m.key, i);
+        dashData.push([null, first ? m.label : null, sec.name, s.achieved, s.max, s.pct / 100]);
+        first = false;
       });
-      const score = calcSectionScore(auditKey, si);
-      data.push(['Section Score', null, null, null, score.achieved, score.max, score.pct / 100]);
-      data.push([]);
+      const total = calcAuditTotal(m.key);
+      dashData.push([null, m.label + '  - TOTAL', null, total.achieved, total.max, total.pct / 100]);
+      dashData.push([]);
+    });
+    const dashWs = XLSX.utils.aoa_to_sheet(dashData);
+    dashWs['!cols'] = [{wch:4},{wch:24},{wch:38},{wch:10},{wch:8},{wch:10}];
+    for (let r = 0; r < dashData.length; r++) { const cell = dashWs[XLSX.utils.encode_cell({r,c:5})]; if (cell && typeof cell.v === 'number') cell.z = '0.0%'; }
+    XLSX.utils.book_append_sheet(wb, dashWs, 'Summary Dashboard');
+
+    // Each audit sheet
+    const sheetNames = { licensing: 'Childcare Licensing', ahs: 'AHS Audit', kitchen: 'Kitchen Audit', pedagogy: 'Programming & Pedagogy' };
+    Object.keys(AUDITS).forEach(auditKey => {
+      initAuditState(auditKey);
+      const audit = AUDITS[auditKey];
+      const auditState = state.audits[auditKey];
+      const info = auditState.info;
+      const data = [];
+      data.push([`Smart Little People  |  ${audit.title}`]);
+      data.push(['Date:', info.date, null, null, 'Room / Classroom:', info.room]);
+      data.push(['Inspector:', info.inspector, null, null, 'Teacher 1:', info.teacher1]);
+      data.push(['Teacher 2:', info.teacher2]);
+      data.push(['Weight:  1 = Standard  |  2 = Important ($250-$4,000)  |  3 = Critical ($500-$10,000)']);
+      data.push(['#', 'Compliance Area', 'Wt', 'Answer', 'Pts', 'Max', 'Comments / Action Required']);
+      audit.sections.forEach((section, si) => {
+        data.push([`Section ${section.name}`]);
+        section.items.forEach(item => {
+          const ans = auditState.answers[item.id] || '';
+          let answerText = '', pts = 0, max = item.wt;
+          if (ans === 'compliant') { answerText = 'Compliant'; pts = item.wt; }
+          else if (ans === 'non-compliant') { answerText = 'Non-Compliant'; pts = 0; }
+          else if (ans === 'na') { answerText = 'N/A'; pts = 0; max = 0; }
+          data.push([item.id, item.text, item.wt, answerText, pts, max, auditState.comments[item.id] || '']);
+        });
+        const score = calcSectionScore(auditKey, si);
+        data.push(['Section Score', null, null, null, score.achieved, score.max, score.pct / 100]);
+        data.push([]);
+      });
+      const total = calcAuditTotal(auditKey);
+      data.push(['OVERALL AUDIT SCORE', null, null, null, total.achieved, total.max, total.pct / 100]);
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      ws['!cols'] = [{wch:12},{wch:65},{wch:5},{wch:16},{wch:6},{wch:6},{wch:40}];
+      for (let r = 0; r < data.length; r++) { const cell = ws[XLSX.utils.encode_cell({r,c:6})]; if (cell && typeof cell.v === 'number') cell.z = '0.0%'; }
+      XLSX.utils.book_append_sheet(wb, ws, sheetNames[auditKey]);
     });
 
-    const total = calcAuditTotal(auditKey);
-    data.push(['OVERALL AUDIT SCORE', null, null, null, total.achieved, total.max, total.pct / 100]);
+    const xlsxData = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+    const room = state.audits.licensing?.info?.room || 'Audit';
+    const safeName = room.replace(/[^a-zA-Z0-9]/g, '_') || 'Audit';
+    zip.file(`SLP_Compliance_${safeName}_${today}.xlsx`, xlsxData);
 
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    ws['!cols'] = [{wch:12},{wch:65},{wch:5},{wch:16},{wch:6},{wch:6},{wch:40}];
-    // Format percentage cells
-    for (let r = 0; r < data.length; r++) {
-      const cell = ws[XLSX.utils.encode_cell({r, c:6})];
-      if (cell && typeof cell.v === 'number') { cell.z = '0.0%'; }
+    // Add photos to folders
+    const allPhotos = await getAllPhotos();
+    let photoCount = 0;
+    for (const entry of allPhotos) {
+      const auditKey = entry.auditKey;
+      const itemId = entry.itemId;
+      const answer = state.audits[auditKey]?.answers[itemId];
+      const folder = answer === 'compliant' ? compliantFolder : nonCompliantFolder;
+      const auditLabel = AUDIT_LABELS[auditKey] || auditKey;
+      const safeItemId = itemId.replace(/\./g, '-');
+
+      for (let i = 0; i < entry.photos.length; i++) {
+        const dataUrl = entry.photos[i];
+        const base64 = dataUrl.split(',')[1];
+        const suffix = entry.photos.length > 1 ? `_${i + 1}` : '';
+        const filename = `${auditLabel}_${safeItemId}${suffix}.jpg`;
+        folder.file(filename, base64, { base64: true });
+        photoCount++;
+      }
     }
-    XLSX.utils.book_append_sheet(wb, ws, sheetNames[auditKey]);
-  });
 
-  // Generate filename with date
-  const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
-  const room = state.audits.licensing?.info?.room || 'Audit';
-  const safeName = room.replace(/[^a-zA-Z0-9]/g, '_') || 'Audit';
-  XLSX.writeFile(wb, `SLP_Compliance_${safeName}_${today}.xlsx`);
-  showToast('Excel file exported!');
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `SLP_Compliance_${safeName}_${today}.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    showToast(`Exported! ${photoCount} photo${photoCount !== 1 ? 's' : ''} included`);
+  } catch(err) {
+    console.error(err);
+    showToast('Export error: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Export to ZIP (Excel + Photos)';
+  }
 }
 
 // ===== INIT =====
-render();
+openDB().then(() => render());
 </script>
 </body>
 </html>
