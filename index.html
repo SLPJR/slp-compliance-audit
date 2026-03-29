@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SLP Compliance Audit</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+:root {
+  --primary: #1a5276;
+  --primary-light: #2980b9;
+  --success: #27ae60;
+  --danger: #e74c3c;
+  --warning: #f39c12;
+  --gray: #95a5a6;
+  --light: #f8f9fa;
+  --white: #ffffff;
+  --border: #dee2e6;
+  --shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #333; font-size: 15px; }
+.header { background: var(--primary); color: white; padding: 12px 16px; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); }
+.header h1 { font-size: 16px; font-weight: 600; }
+.header .subtitle { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+
+/* Tab Navigation */
+.tab-nav { display: flex; overflow-x: auto; background: var(--white); border-bottom: 2px solid var(--border); position: sticky; top: 52px; z-index: 99; -webkit-overflow-scrolling: touch; }
+.tab-nav::-webkit-scrollbar { display: none; }
+.tab-btn { flex: 0 0 auto; padding: 10px 14px; font-size: 12px; font-weight: 600; border: none; background: none; color: var(--gray); cursor: pointer; white-space: nowrap; border-bottom: 3px solid transparent; transition: all 0.2s; }
+.tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); background: #e8f4fd; }
+
+/* Audit Info */
+.audit-info { background: var(--white); padding: 16px; margin: 8px; border-radius: 10px; box-shadow: var(--shadow); }
+.audit-info h2 { font-size: 15px; color: var(--primary); margin-bottom: 12px; }
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.info-grid.single { grid-template-columns: 1fr; }
+.info-field label { display: block; font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 4px; }
+.info-field input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px; transition: border-color 0.2s; }
+.info-field input:focus { outline: none; border-color: var(--primary-light); }
+
+/* Score Bar */
+.score-bar { background: var(--white); margin: 0 8px 8px; padding: 14px 16px; border-radius: 10px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 12px; position: sticky; top: 95px; z-index: 98; }
+.score-bar .score-label { font-size: 12px; font-weight: 600; color: #666; white-space: nowrap; }
+.score-bar .progress-track { flex: 1; height: 10px; background: #e9ecef; border-radius: 5px; overflow: hidden; }
+.score-bar .progress-fill { height: 100%; border-radius: 5px; transition: width 0.4s ease, background 0.4s ease; }
+.score-bar .score-pct { font-size: 16px; font-weight: 700; min-width: 52px; text-align: right; }
+.score-bar .score-pts { font-size: 11px; color: #888; }
+
+/* Section */
+.section-card { background: var(--white); margin: 8px; border-radius: 10px; box-shadow: var(--shadow); overflow: hidden; }
+.section-header { padding: 12px 16px; background: #f8f9fa; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+.section-header h3 { font-size: 14px; color: var(--primary); }
+.section-score { font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 12px; background: #e9ecef; }
+.section-score.good { background: #d4efdf; color: #1e8449; }
+.section-score.mid { background: #fef9e7; color: #b7950b; }
+.section-score.bad { background: #fadbd8; color: #c0392b; }
+.section-items { display: none; }
+.section-items.open { display: block; }
+
+/* Item */
+.item { padding: 14px 16px; border-bottom: 1px solid #f0f0f0; }
+.item:last-child { border-bottom: none; }
+.item-header { display: flex; gap: 8px; margin-bottom: 8px; }
+.item-num { font-size: 12px; font-weight: 700; color: var(--primary-light); min-width: 36px; }
+.item-text { font-size: 13px; line-height: 1.4; flex: 1; }
+.item-weight { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; height: fit-content; }
+.wt-1 { background: #eafaf1; color: #27ae60; }
+.wt-2 { background: #fef9e7; color: #f39c12; }
+.wt-3 { background: #fdedec; color: #e74c3c; }
+
+/* Answer Buttons */
+.answer-row { display: flex; gap: 6px; margin-bottom: 8px; }
+.answer-btn { flex: 1; padding: 9px 4px; border: 2px solid var(--border); border-radius: 8px; font-size: 11px; font-weight: 600; background: var(--white); cursor: pointer; transition: all 0.15s; text-align: center; }
+.answer-btn.compliant.selected { background: #27ae60; color: white; border-color: #27ae60; }
+.answer-btn.non-compliant.selected { background: #e74c3c; color: white; border-color: #e74c3c; }
+.answer-btn.na.selected { background: #95a5a6; color: white; border-color: #95a5a6; }
+
+/* Comments */
+.comment-input { width: 100%; padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; resize: vertical; min-height: 36px; font-family: inherit; }
+.comment-input:focus { outline: none; border-color: var(--primary-light); }
+
+/* Summary Dashboard */
+.dashboard { padding: 8px; }
+.dash-card { background: var(--white); border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 10px; overflow: hidden; }
+.dash-card-header { padding: 12px 16px; font-size: 14px; font-weight: 700; color: white; display: flex; justify-content: space-between; }
+.dash-card-header.licensing { background: #2c3e50; }
+.dash-card-header.ahs { background: #8e44ad; }
+.dash-card-header.kitchen { background: #d35400; }
+.dash-card-header.pedagogy { background: #16a085; }
+.dash-section-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+.dash-section-row:last-child { border-bottom: none; }
+.dash-section-name { flex: 1; }
+.dash-section-score { font-weight: 700; min-width: 50px; text-align: right; }
+.dash-total { padding: 10px 16px; font-weight: 700; font-size: 14px; background: #f8f9fa; display: flex; justify-content: space-between; }
+
+/* Export */
+.export-section { padding: 16px 8px; }
+.export-btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; color: white; cursor: pointer; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.export-btn.excel { background: #217346; }
+.export-btn.save { background: var(--primary); }
+.export-btn.clear { background: var(--danger); }
+
+/* Toast */
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 8px; font-size: 14px; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.toast.show { opacity: 1; }
+
+/* Responsive */
+@media (max-width: 400px) {
+  .info-grid { grid-template-columns: 1fr; }
+  .answer-btn { font-size: 10px; padding: 8px 2px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Smart Little People</h1>
+  <div class="subtitle">Compliance Audit App</div>
+</div>
+
+<div class="tab-nav" id="tabNav">
+  <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+  <button class="tab-btn" data-tab="licensing">Childcare Licensing</button>
+  <button class="tab-btn" data-tab="ahs">AHS Audit</button>
+  <button class="tab-btn" data-tab="kitchen">Kitchen Audit</button>
+  <button class="tab-btn" data-tab="pedagogy">Prog. & Pedagogy</button>
+</div>
+
+<div id="content"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== AUDIT DATA =====
+const AUDITS = {
+  licensing: {
+    title: "Childcare Licensing Compliance Audit",
+    headerClass: "licensing",
+    sections: [
+      { name: "Program Plan & Operations", items: [
+        { id: "1.1", text: "Program plan is current, posted, and followed daily", wt: 2 },
+        { id: "1.2", text: "Each age group is in its approved licensed room", wt: 3 },
+        { id: "1.3", text: "No use of unapproved rooms (e.g., offices) as care spaces", wt: 3 },
+        { id: "1.4", text: "Operational hours match the approved license", wt: 2 },
+        { id: "1.5", text: "No unapproved ECS or outside programs operating in licensed space", wt: 2 },
+        { id: "1.6", text: "Staff/child group lists posted in each room with assigned primary staff", wt: 1 }
+      ]},
+      { name: "Staffing & Ratios", items: [
+        { id: "2.1", text: "Required staff:child ratios maintained at all times (Schedule 1, s.27 ELCC Reg.)", wt: 3 },
+        { id: "2.2", text: "Minimum of 2 staff present in groups of 7+ children (1 must be primary staff)", wt: 3 },
+        { id: "2.3", text: "At least 1 in 3 staff are ECE Level 2+ between 8:30 AM and 4:30 PM", wt: 3 },
+        { id: "2.4", text: "Supervisor holds ECE Level 3 or a valid exemption is posted and current", wt: 3 },
+        { id: "2.5", text: "No staff left alone with children until Criminal Record Check + VSS cleared", wt: 3 }
+      ]},
+      { name: "Staff Records", items: [
+        { id: "3.1", text: "Daily staff attendance complete: arrival, departure, and hours providing care", wt: 2 },
+        { id: "3.2", text: "CRC & Vulnerable Sector Search on file within 6 months of hire; renewed every 3 years", wt: 3 },
+        { id: "3.3", text: "Current First Aid certificate on file for at least 1 in every 2 staff", wt: 3 },
+        { id: "3.4", text: "ECE certification copy on file for all staff (Level 1, 2, or 3)", wt: 2 }
+      ]},
+      { name: "Children's Records", items: [
+        { id: "4.1", text: "Full child file on record, including DOB, parent contacts, emergency contacts, health information, and consents. Are all records accurate and up to date?", wt: 2 },
+        { id: "4.2", text: "Daily child attendance records complete: arrival and departure times", wt: 2 },
+        { id: "4.3", text: "Incident reports complete, signed, and shared with parents and licensing as required", wt: 2 },
+        { id: "4.4", text: "Portable emergency records (binder/backpack) current and ready for off-site use", wt: 3 }
+      ]},
+      { name: "Furnishings, Materials & Environment", items: [
+        { id: "5.1", text: "Sufficient toys, books, art, and sensory materials available for all age groups", wt: 1 },
+        { id: "5.2", text: "Materials complete and not broken (puzzles, play sets, books)", wt: 1 },
+        { id: "5.3", text: "Tables and chairs available for every child in each room", wt: 2 },
+        { id: "5.4", text: "Infant areas free from large equipment or strollers blocking play space", wt: 2 },
+        { id: "5.5", text: "All furnishings safe, age-appropriate, and in good repair", wt: 2 },
+        { id: "5.6", text: "Outdoor play space is secure, enclosed, and meets square metre requirements", wt: 3 }
+      ]},
+      { name: "Health & Illness Management", items: [
+        { id: "6.1", text: "Meals and snacks meet Canada Food Guide / Alberta Health Guide requirements", wt: 2 },
+        { id: "6.2", text: "Menu posted in a visible location in each room", wt: 1 },
+        { id: "6.3", text: "Infant food and bottles labeled with child's name", wt: 2 },
+        { id: "6.4", text: "Children seated while eating or drinking", wt: 2 },
+        { id: "6.5", text: "No drinking during nap/rest time", wt: 2 },
+        { id: "6.6", text: "Sick children are separated and sent home promptly", wt: 3 },
+        { id: "6.7", text: "Illness return policy enforced: child symptom-free 24 hrs before returning to care", wt: 3 },
+        { id: "6.8", text: "Allergy lists current, posted in rooms, and shared with all staff", wt: 3 }
+      ]},
+      { name: "Medication & Health Care", items: [
+        { id: "7.1", text: "Written parental consent obtained for each medication to be administered", wt: 3 },
+        { id: "7.2", text: "Medication stored in original, labeled container", wt: 3 },
+        { id: "7.3", text: "Medication log complete: child name, dose, time, staff initials", wt: 2 },
+        { id: "7.4", text: "Emergency medications (EpiPens, inhalers) stored safely and accessibly", wt: 3 },
+        { id: "7.5", text: "911 called immediately after any EpiPen administration", wt: 3 }
+      ]},
+      { name: "Supervision & Child Safety", items: [
+        { id: "8.1", text: "Line-of-sight supervision maintained at all times; no child left unattended", wt: 3 },
+        { id: "8.2", text: "Prohibited practices not used: no physical punishment, restraint, or confinement as discipline", wt: 3 },
+        { id: "8.3", text: "Toddlers/infants not confined to high chairs, cribs, or swings beyond immediate care needs", wt: 2 },
+        { id: "8.4", text: "Active supervision maintained during all transitions (washroom runs, outdoor, hallways)", wt: 3 },
+        { id: "8.5", text: "Vehicle transport: all children secured in age-appropriate car seats; written consent obtained", wt: 3 },
+        { id: "8.6", text: "No children left unsupervised in vehicles at any time", wt: 3 }
+      ]},
+      { name: "Emergency & Safety", items: [
+        { id: "9.1", text: "Emergency contacts posted: 911, Poison Control, AHS", wt: 2 },
+        { id: "9.2", text: "Evacuation plan posted and visible from outside each room", wt: 2 },
+        { id: "9.3", text: "Fire and health inspection certificates posted and current", wt: 1 },
+        { id: "9.4", text: "Portable records accompany children on all outings and evacuations", wt: 3 },
+        { id: "9.5", text: "No smoking or vaping on premises or during hours of care", wt: 3 },
+        { id: "9.6", text: "Daily safety checks complete: chemicals secured, toys safe, hazards noted", wt: 2 }
+      ]},
+      { name: "Posting & Documentation", items: [
+        { id: "10.1", text: "Childcare license posted in a visible location", wt: 2 },
+        { id: "10.2", text: "Most recent licensing inspection report posted", wt: 1 },
+        { id: "10.3", text: "Any exemptions or probationary license posted (if applicable)", wt: 1 },
+        { id: "10.4", text: "Any variance notices posted (if applicable)", wt: 1 },
+        { id: "10.5", text: "Policies shared with and accessible to parents and staff", wt: 1 }
+      ]},
+      { name: "Playground Safety", items: [
+        { id: "11.1", text: "Daily playground safety inspection log completed before children access the area", wt: 3 },
+        { id: "11.2", text: "Fall zones have minimum 1.8 m depth of engineered wood fiber, rubber mulch, or sand", wt: 3 },
+        { id: "11.3", text: "All equipment openings checked: no entrapment hazards in the 9-23 cm dangerous zone", wt: 3 },
+        { id: "11.4", text: "No strangulation hazards present: no drawstrings, loose ropes, or protrusions that catch clothing", wt: 3 },
+        { id: "11.5", text: "Perimeter fence minimum 1.2 m high with childproof self-latching, outward-opening gate", wt: 3 },
+        { id: "11.6", text: "Gate latch inaccessible to children; gate inspected and functional before each use", wt: 2 },
+        { id: "11.7", text: "All equipment anchored securely; no exposed bolt ends, sharp edges, or splintered wood", wt: 3 },
+        { id: "11.8", text: "Platforms above 75 cm have appropriate guardrails and protective barriers", wt: 2 }
+      ]}
+    ]
+  },
+  ahs: {
+    title: "Alberta Health Services (AHS) Monitoring Audit",
+    headerClass: "ahs",
+    sections: [
+      { name: "Hand Hygiene", items: [
+        { id: "A1.1", text: "Handwashing sinks stocked with liquid soap and paper towels in all required areas", wt: 2 },
+        { id: "A1.2", text: "Staff and children wash hands: before eating, after diapering, after outdoor play, after coughing/sneezing, when visibly soiled", wt: 3 },
+        { id: "A1.3", text: "Hand sanitizer NOT used as substitute for handwashing during diapering or food prep", wt: 2 },
+        { id: "A1.4", text: "Staff model 20-second handwashing; assist children; use paper towel to turn off taps/open doors", wt: 2 },
+        { id: "A1.5", text: "Handwashing posters posted at child height near sinks", wt: 1 }
+      ]},
+      { name: "Cleaning & Disinfection", items: [
+        { id: "B2.1", text: "Daily cleaning schedule is posted and followed", wt: 2 },
+        { id: "B2.2", text: "Surfaces cleaned first, then disinfected (correct two-step order observed)", wt: 2 },
+        { id: "B2.3", text: "High-touch surfaces cleaned daily and when visibly soiled", wt: 2 },
+        { id: "B2.4", text: "Only Health Canada-approved disinfectants, PPM posted", wt: 3 },
+        { id: "B2.5", text: "Toys and equipment cleaned regularly; mouthed toys cleaned and sanitized after each use", wt: 3 },
+        { id: "B2.6", text: "Fabric items laundered frequently: bedding, costumes, stuffies, dress-up clothes", wt: 2 },
+        { id: "B2.7", text: "Separate cloths and mops used for bathrooms vs. classrooms/kitchen", wt: 2 },
+        { id: "B2.8", text: "Cleaning supplies stored safely and locked out of reach of children", wt: 3 },
+        { id: "B2.9", text: "Each child's bedding stored separately inside their own labeled bag", wt: 2 },
+        { id: "B2.10", text: "Soiled and clean laundry separated at all times", wt: 2 },
+        { id: "B2.11", text: "Sufficient toilet paper and paper towels available in all washrooms", wt: 1 },
+        { id: "B2.12", text: "Sanitizer solution labeled with date and changed weekly (not expired)", wt: 2 }
+      ]},
+      { name: "Diapering Areas & Practices", items: [
+        { id: "C3.1", text: "Full diapering procedure followed for every diaper change", wt: 3 },
+        { id: "C3.2", text: "Diapering area cleaned and disinfected after every change", wt: 3 },
+        { id: "C3.3", text: "Soiled diapers and wipes disposed of properly (sealed bag or lidded bin)", wt: 2 },
+        { id: "C3.4", text: "Child never left unattended on the diaper change table", wt: 3 },
+        { id: "C3.5", text: "Diapering takes place only in designated area - never near food prep", wt: 3 },
+        { id: "C3.6", text: "Waterproof, cleanable surface with safety belt (diaper pad) used", wt: 2 },
+        { id: "C3.7", text: "Hands washed before and after each diaper change (staff and child)", wt: 3 },
+        { id: "C3.8", text: "Diaper sanitizer solution is current (not expired)", wt: 2 },
+        { id: "C3.9", text: "Soiled diapers disposed in hands-free lidded bin; bin emptied daily", wt: 2 }
+      ]},
+      { name: "Food Preparation & Storage", items: [
+        { id: "D4.1", text: "Food prep area completely separated from diapering area at all times", wt: 3 },
+        { id: "D4.2", text: "Food contacts only clean trays or plates - not raw counters or other surfaces", wt: 2 },
+        { id: "D4.3", text: "Cupboards are clean, organized, and equipped with child-safety locks", wt: 2 },
+        { id: "D4.4", text: "Allergy lists posted; no food sharing between children; infant bottles labeled", wt: 3 }
+      ]},
+      { name: "Toileting & Bathroom Hygiene", items: [
+        { id: "E5.1", text: "Toilets and potty chairs cleaned and disinfected daily and when soiled", wt: 2 },
+        { id: "E5.2", text: "Potties emptied into toilet and sanitized after each use", wt: 2 },
+        { id: "E5.3", text: "Bathroom sinks clean; liquid soap and paper towels always stocked", wt: 2 },
+        { id: "E5.4", text: "Toilet paper and waste bins always available in washrooms", wt: 1 },
+        { id: "E5.5", text: "Sufficient toilets/sinks per child ratios; step stools provided if needed", wt: 2 },
+        { id: "E5.6", text: "Bathrooms free of persistent odors; ventilation functioning correctly", wt: 1 }
+      ]},
+      { name: "Illness Response & Sick Child Protocols", items: [
+        { id: "F6.1", text: "Sick child policy posted and communicated to all families at enrollment", wt: 2 },
+        { id: "F6.2", text: "Ill children separated immediately upon symptom identification", wt: 3 },
+        { id: "F6.3", text: "Staff recognize exclusion symptoms: fever 38+C, vomiting, diarrhea, rash, eye discharge", wt: 3 },
+        { id: "F6.4", text: "Parents contacted promptly when child shows illness symptoms; pickup within 1 hour", wt: 3 },
+        { id: "F6.5", text: "Ill children supervised in a designated, comfortable waiting area", wt: 2 },
+        { id: "F6.6", text: "Return-to-care criteria enforced: child symptom-free 24 hours before return", wt: 3 },
+        { id: "F6.7", text: "Illness log maintained: child name, symptoms, date/time, parent notified, return date", wt: 2 },
+        { id: "F6.8", text: "AHS notified of reportable illnesses as required by Public Health Act", wt: 3 }
+      ]},
+      { name: "Outbreak Response Protocol", items: [
+        { id: "G7.1", text: "Written outbreak response plan on file and accessible to all staff", wt: 2 },
+        { id: "G7.2", text: "AHS notified when 2+ children/staff show same symptoms within 72 hours", wt: 3 },
+        { id: "G7.3", text: "Enhanced cleaning and disinfection schedule implemented immediately during outbreak", wt: 3 },
+        { id: "G7.4", text: "Illness log updated with all affected children and staff during outbreak", wt: 2 },
+        { id: "G7.5", text: "Parents notified of suspected or confirmed outbreak via written notice", wt: 3 },
+        { id: "G7.6", text: "Symptomatic staff sent home; replacement arranged to maintain ratios", wt: 3 },
+        { id: "G7.7", text: "Outbreak closure or cohorting decision made in consultation with AHS inspector", wt: 3 }
+      ]},
+      { name: "Environmental Health", items: [
+        { id: "H8.1", text: "Rooms well ventilated: windows operable or HVAC functioning and regularly maintained", wt: 2 },
+        { id: "H8.2", text: "Hot water functional at all classroom and washroom sinks", wt: 1 },
+        { id: "H8.3", text: "Water temperature at children's sinks not scalding (max 49C / 120F)", wt: 3 },
+        { id: "H8.4", text: "No broken toys or materials with sharp or hazardous edges present in any room", wt: 2 },
+        { id: "H8.5", text: "Table wiping cloths labeled for table use only; soiled cloths stored in separate container", wt: 2 },
+        { id: "H8.6", text: "No visible mold, moisture damage, or pest evidence in any room or storage area", wt: 3 },
+        { id: "H8.7", text: "Humidifiers (if used) cleaned and disinfected weekly to prevent Legionella risk", wt: 2 },
+        { id: "H8.8", text: "Outdoor water play equipment drained and sanitized after each use", wt: 2 }
+      ]}
+    ]
+  },
+  kitchen: {
+    title: "Kitchen Monitoring Audit",
+    headerClass: "kitchen",
+    sections: [
+      { name: "Food Handling & Hygiene", items: [
+        { id: "K1.1", text: "Kitchen staff follow the posted monthly menu", wt: 2 },
+        { id: "K1.2", text: "No unsafe home-prepared foods used (e.g., home-canned low-acid foods)", wt: 3 },
+        { id: "K1.3", text: "All food from approved sources; prepared on-site in a permitted kitchen", wt: 3 },
+        { id: "K1.4", text: "Sink stocked with liquid soap and single-use paper towels at all times", wt: 2 },
+        { id: "K1.5", text: "Food handlers wash hands between tasks; hair tied back; clean attire; no ill staff in food prep", wt: 3 },
+        { id: "K1.6", text: "Handwashing posters posted at adult eye-level in kitchen", wt: 1 },
+        { id: "K1.7", text: "Only single-use tasting utensils used (no double-dipping)", wt: 2 }
+      ]},
+      { name: "Kitchen Sanitation", items: [
+        { id: "K2.1", text: "Counters and cutting boards smooth and cleanable; sanitized before and after food prep", wt: 2 },
+        { id: "K2.2", text: "Dishes and utensils washed, rinsed, and sanitized; air-dried before storage", wt: 3 },
+        { id: "K2.3", text: "Cupboards and utensil storage are clean and organized", wt: 1 },
+        { id: "K2.4", text: "Oven, stove, and range hood are clean and grease-free", wt: 2 },
+        { id: "K2.5", text: "General kitchen area is clean and organized at all times", wt: 1 }
+      ]},
+      { name: "Serving & Allergy Safety", items: [
+        { id: "K3.1", text: "Surfaces sanitized immediately before serving food", wt: 2 },
+        { id: "K3.2", text: "No sharing of utensils or cups between children", wt: 2 },
+        { id: "K3.3", text: "Allergy lists current and posted in visible location in kitchen", wt: 3 },
+        { id: "K3.4", text: "Allergen exposure prevention procedures followed during prep and serving", wt: 3 },
+        { id: "K3.5", text: "Individual allergen-safe meal prepared and labeled for children with food allergies", wt: 3 }
+      ]},
+      { name: "Operations & Equipment", items: [
+        { id: "K4.1", text: "All appliances in good working condition (dishwasher, oven, refrigerator, etc.)", wt: 2 },
+        { id: "K4.2", text: "Meals prepared and delivered to classrooms on schedule", wt: 2 },
+        { id: "K4.3", text: "Biweekly and monthly food orders placed according to menu plan", wt: 1 },
+        { id: "K4.4", text: "Adequate food supply maintained for the current week/month", wt: 2 },
+        { id: "K4.5", text: "Daily inventory record maintained by kitchen staff", wt: 1 },
+        { id: "K4.6", text: "All necessary supplies stocked: gloves, paper towels, soap, sanitizer", wt: 2 },
+        { id: "K4.7", text: "Current month menu posted in the kitchen and in each classroom", wt: 1 },
+        { id: "K4.8", text: "Fire extinguisher inspected, tagged, and not expired", wt: 3 },
+        { id: "K4.9", text: "Meal count maintained: meals per day / per child / per classroom", wt: 1 }
+      ]},
+      { name: "Temperature Control", items: [
+        { id: "K5.1", text: "Fridge temperature at 4C (40F) or colder; temperatures logged daily", wt: 3 },
+        { id: "K5.2", text: "Freezer temperature at -18C (0F) or colder; temperatures logged", wt: 3 },
+        { id: "K5.3", text: "Thermometer calibrated and in use in the kitchen", wt: 2 },
+        { id: "K5.4", text: "Hot and cold water available and functional at kitchen sink", wt: 1 },
+        { id: "K5.5", text: "Expiration dates checked regularly; expired items removed immediately", wt: 2 },
+        { id: "K5.6", text: "Cooked food reaches safe internal temperatures (poultry 74C, ground meat 71C)", wt: 3 }
+      ]},
+      { name: "Nutrition & Menu Compliance", items: [
+        { id: "K6.1", text: "Menu planned according to Canada's Food Guide: appropriate food groups served per age", wt: 2 },
+        { id: "K6.2", text: "At least one serving of vegetables or fruit provided per meal or snack", wt: 2 },
+        { id: "K6.3", text: "Whole grain options included at least once per day", wt: 1 },
+        { id: "K6.4", text: "No deep-fried foods served more than once per week", wt: 2 },
+        { id: "K6.5", text: "No ultra-processed foods served (chips, candy, soda, flavored milk)", wt: 2 },
+        { id: "K6.6", text: "Fresh drinking water available to children at all times in each classroom", wt: 2 },
+        { id: "K6.7", text: "Age-appropriate textures and portion sizes provided (no choking hazards for under-3s)", wt: 3 },
+        { id: "K6.8", text: "Infant formula and baby food stored, prepared, and served per AHS health guidelines", wt: 3 }
+      ]}
+    ]
+  },
+  pedagogy: {
+    title: "Programming & Pedagogy Quality Audit",
+    headerClass: "pedagogy",
+    sections: [
+      { name: "Bilingual Programming", items: [
+        { id: "P1.1", text: "Daily programming offered in both English and Spanish (or designated second language)", wt: 2 },
+        { id: "P1.2", text: "Second language integrated naturally into routines - not only formal instruction", wt: 2 },
+        { id: "P1.3", text: "Books, songs, and materials available in both program languages", wt: 1 },
+        { id: "P1.4", text: "Bilingual signage and labels visible throughout the learning environment", wt: 1 },
+        { id: "P1.5", text: "Staff demonstrate consistent use of target language during daily interactions", wt: 2 },
+        { id: "P1.6", text: "Cultural celebrations reflect language communities represented in the program", wt: 1 },
+        { id: "P1.7", text: "Family languages respected and incorporated into daily communication", wt: 1 },
+        { id: "P1.8", text: "Language immersion strategies documented in the program plan", wt: 2 },
+        { id: "P1.9", text: "Children's bilingual progress monitored using age-appropriate observation tools", wt: 2 }
+      ]},
+      { name: "Curriculum & Play-Based Learning", items: [
+        { id: "P2.1", text: "Daily schedule balances child-initiated and educator-guided play", wt: 2 },
+        { id: "P2.2", text: "Learning provocations and intentional invitations to play are set up daily", wt: 2 },
+        { id: "P2.3", text: "Outdoor play offered at least twice daily (weather permitting)", wt: 2 },
+        { id: "P2.4", text: "Block, dramatic, and sensory play areas available and in active use", wt: 1 },
+        { id: "P2.5", text: "Activities reflect the Learn Through Play curriculum domains (Belonging, Play, Inquiry, etc.)", wt: 2 },
+        { id: "P2.6", text: "Loose parts and open-ended materials present in learning areas", wt: 1 },
+        { id: "P2.7", text: "Play plans or program plans documented and updated weekly", wt: 2 },
+        { id: "P2.8", text: "Activities are developmentally appropriate for each age group served", wt: 2 },
+        { id: "P2.9", text: "Emergent curriculum observed: educators build on children's interests and discoveries", wt: 2 },
+        { id: "P2.10", text: "Physical literacy activities (gross motor, outdoor movement) incorporated daily", wt: 2 }
+      ]},
+      { name: "Developmental Documentation", items: [
+        { id: "P3.1", text: "Portfolios or learning stories maintained for each child", wt: 2 },
+        { id: "P3.2", text: "Observations documented at least twice per month per child", wt: 2 },
+        { id: "P3.3", text: "ASQ or equivalent developmental screening completed at required intervals per age", wt: 3 },
+        { id: "P3.4", text: "IPP documentation current and co-developed with families for children with identified needs", wt: 3 },
+        { id: "P3.5", text: "Documentation shared with families regularly (at minimum once per semester)", wt: 2 },
+        { id: "P3.6", text: "Staff trained in observation and documentation practices", wt: 2 },
+        { id: "P3.7", text: "Developmental concerns referred to appropriate external supports with family consent", wt: 3 }
+      ]},
+      { name: "Behaviour Guidance", items: [
+        { id: "P4.1", text: "Staff use only positive guidance: redirection, co-regulation, natural consequences", wt: 2 },
+        { id: "P4.2", text: "No yelling, shaming, isolation, or physical punishment observed at any time", wt: 3 },
+        { id: "P4.3", text: "Visual schedules and clear expectations posted to support child self-regulation", wt: 1 },
+        { id: "P4.4", text: "Staff acknowledge children's emotions verbally before redirecting behaviour", wt: 2 },
+        { id: "P4.5", text: "Behaviour support plans in place for children with persistent challenges", wt: 2 },
+        { id: "P4.6", text: "Families informed of guidance approaches and involved in developing support plans", wt: 2 },
+        { id: "P4.7", text: "Crisis de-escalation procedures documented and practiced by all staff", wt: 2 }
+      ]},
+      { name: "Inclusion & Environment Design", items: [
+        { id: "P5.1", text: "Physical environment accessible and adapted for children with mobility needs", wt: 2 },
+        { id: "P5.2", text: "Materials and activities modified to meet individual learning needs and IEP goals", wt: 2 },
+        { id: "P5.3", text: "Room arrangement promotes children's independence and child-led exploration", wt: 1 },
+        { id: "P5.4", text: "Sensory areas or calm corners available for self-regulation", wt: 1 },
+        { id: "P5.5", text: "Cultural diversity reflected in books, images, toys, and classroom materials", wt: 1 },
+        { id: "P5.6", text: "Gender-inclusive and stereotype-free materials used throughout the environment", wt: 1 },
+        { id: "P5.7", text: "PUF-funded children receive planned inclusive programming in integrated settings", wt: 3 }
+      ]},
+      { name: "Educator Professional Practice", items: [
+        { id: "P6.1", text: "Educators participate in at least one professional development activity per quarter", wt: 2 },
+        { id: "P6.2", text: "Reflective practice: educators review and adjust programming based on observed outcomes", wt: 2 },
+        { id: "P6.3", text: "Performance reviews completed for all staff at least annually", wt: 2 },
+        { id: "P6.4", text: "New staff receive formal onboarding and mentorship in the first 30 days", wt: 2 },
+        { id: "P6.5", text: "Educators demonstrate knowledge of Learn Through Play curriculum and inquiry-based learning", wt: 2 },
+        { id: "P6.6", text: "Staff meetings held monthly to review program quality and child outcomes", wt: 1 },
+        { id: "P6.7", text: "Child protection / mandatory reporting training current for all staff (every 3 years min.)", wt: 3 }
+      ]},
+      { name: "Family Engagement & Communication", items: [
+        { id: "P7.1", text: "Daily communication shared with families (verbal, app, or written - every day)", wt: 2 },
+        { id: "P7.2", text: "Parent orientation held for all new families within the first two weeks of enrollment", wt: 1 },
+        { id: "P7.3", text: "Formal parent-educator conferences held at least twice per year", wt: 2 },
+        { id: "P7.4", text: "Family handbook current, distributed to families, and signed-acknowledged on file", wt: 2 },
+        { id: "P7.5", text: "Family feedback mechanisms in place: surveys, suggestion box, formal complaint process", wt: 1 },
+        { id: "P7.6", text: "Community partnerships documented: speech language, OT, family resource programs, etc.", wt: 2 }
+      ]}
+    ]
+  }
+};
+
+// ===== STATE =====
+let state = loadState() || {
+  activeTab: 'dashboard',
+  audits: {}
+};
+
+function initAuditState(auditKey) {
+  if (state.audits[auditKey]) return;
+  state.audits[auditKey] = {
+    info: { date: '', room: '', inspector: '', teacher1: '', teacher2: '' },
+    answers: {},
+    comments: {},
+    openSections: {}
+  };
+}
+
+function loadState() {
+  try { return JSON.parse(localStorage.getItem('slp_audit_state')); } catch(e) { return null; }
+}
+function saveState() {
+  localStorage.setItem('slp_audit_state', JSON.stringify(state));
+}
+
+// ===== SCORING =====
+function calcSectionScore(auditKey, sectionIdx) {
+  const section = AUDITS[auditKey].sections[sectionIdx];
+  const answers = state.audits[auditKey]?.answers || {};
+  let achieved = 0, max = 0;
+  section.items.forEach(item => {
+    const ans = answers[item.id];
+    if (ans === 'na') return;
+    max += item.wt;
+    if (ans === 'compliant') achieved += item.wt;
+  });
+  return { achieved, max, pct: max > 0 ? Math.round((achieved / max) * 1000) / 10 : 0 };
+}
+
+function calcAuditTotal(auditKey) {
+  const audit = AUDITS[auditKey];
+  let achieved = 0, max = 0;
+  audit.sections.forEach((_, i) => {
+    const s = calcSectionScore(auditKey, i);
+    achieved += s.achieved;
+    max += s.max;
+  });
+  return { achieved, max, pct: max > 0 ? Math.round((achieved / max) * 1000) / 10 : 0 };
+}
+
+function getScoreClass(pct) {
+  if (pct >= 80) return 'good';
+  if (pct >= 50) return 'mid';
+  return 'bad';
+}
+
+function getScoreColor(pct) {
+  if (pct >= 80) return '#27ae60';
+  if (pct >= 50) return '#f39c12';
+  return '#e74c3c';
+}
+
+// ===== RENDER =====
+function render() {
+  const content = document.getElementById('content');
+  if (state.activeTab === 'dashboard') {
+    content.innerHTML = renderDashboard();
+  } else {
+    content.innerHTML = renderAudit(state.activeTab);
+  }
+  bindEvents();
+  saveState();
+}
+
+function renderDashboard() {
+  let html = '<div class="dashboard">';
+
+  // Weight guide
+  html += `<div class="audit-info" style="margin-bottom:10px">
+    <div style="font-size:12px;color:#666;line-height:1.6">
+      <strong>Weight Guide:</strong><br>
+      <span class="item-weight wt-1">1</span> Standard (Low penalty risk $50-$1,000) &nbsp;
+      <span class="item-weight wt-2">2</span> Important (Medium risk $250-$4,000) &nbsp;
+      <span class="item-weight wt-3">3</span> Critical (High risk $500-$10,000)
+    </div>
+  </div>`;
+
+  const auditMeta = [
+    { key: 'licensing', label: 'Childcare Licensing', cls: 'licensing' },
+    { key: 'ahs', label: 'Alberta Health (AHS)', cls: 'ahs' },
+    { key: 'kitchen', label: 'Kitchen', cls: 'kitchen' },
+    { key: 'pedagogy', label: 'Prog. & Pedagogy', cls: 'pedagogy' }
+  ];
+
+  auditMeta.forEach(m => {
+    initAuditState(m.key);
+    const total = calcAuditTotal(m.key);
+    html += `<div class="dash-card">
+      <div class="dash-card-header ${m.cls}">
+        <span>${m.label}</span>
+        <span>${total.pct}%</span>
+      </div>`;
+
+    AUDITS[m.key].sections.forEach((sec, i) => {
+      const s = calcSectionScore(m.key, i);
+      html += `<div class="dash-section-row">
+        <span class="dash-section-name">${sec.name}</span>
+        <span class="dash-section-score" style="color:${getScoreColor(s.pct)}">${s.achieved}/${s.max} (${s.pct}%)</span>
+      </div>`;
+    });
+
+    html += `<div class="dash-total">
+      <span>${m.label} - TOTAL</span>
+      <span style="color:${getScoreColor(total.pct)}">${total.achieved}/${total.max} (${total.pct}%)</span>
+    </div></div>`;
+  });
+
+  // Export buttons
+  html += `<div class="export-section">
+    <button class="export-btn excel" onclick="exportToExcel()">Export to Excel (.xlsx)</button>
+    <button class="export-btn save" onclick="saveProgress()">Save Progress Locally</button>
+    <button class="export-btn clear" onclick="clearAll()">Clear All Data</button>
+  </div>`;
+
+  html += '</div>';
+  return html;
+}
+
+function renderAudit(auditKey) {
+  initAuditState(auditKey);
+  const audit = AUDITS[auditKey];
+  const auditState = state.audits[auditKey];
+  const total = calcAuditTotal(auditKey);
+
+  let html = '';
+
+  // Audit info
+  html += `<div class="audit-info">
+    <h2>${audit.title}</h2>
+    <div class="info-grid">
+      <div class="info-field"><label>Date</label><input type="date" data-info="date" value="${auditState.info.date}"></div>
+      <div class="info-field"><label>Room / Classroom</label><input type="text" data-info="room" value="${auditState.info.room}" placeholder="e.g., Butterfly Room"></div>
+    </div>
+    <div class="info-grid" style="margin-top:10px">
+      <div class="info-field"><label>Inspector</label><input type="text" data-info="inspector" value="${auditState.info.inspector}" placeholder="Name"></div>
+      <div class="info-field"><label>Teacher 1</label><input type="text" data-info="teacher1" value="${auditState.info.teacher1}" placeholder="Name"></div>
+    </div>
+    <div class="info-grid single" style="margin-top:10px">
+      <div class="info-field"><label>Teacher 2</label><input type="text" data-info="teacher2" value="${auditState.info.teacher2}" placeholder="Name"></div>
+    </div>
+  </div>`;
+
+  // Score bar
+  html += `<div class="score-bar">
+    <span class="score-label">OVERALL</span>
+    <div class="progress-track"><div class="progress-fill" style="width:${total.pct}%;background:${getScoreColor(total.pct)}"></div></div>
+    <div>
+      <div class="score-pct" style="color:${getScoreColor(total.pct)}">${total.pct}%</div>
+      <div class="score-pts">${total.achieved}/${total.max}</div>
+    </div>
+  </div>`;
+
+  // Sections
+  audit.sections.forEach((section, si) => {
+    const score = calcSectionScore(auditKey, si);
+    const isOpen = auditState.openSections[si];
+    html += `<div class="section-card">
+      <div class="section-header" data-toggle-section="${si}">
+        <h3>${section.name}</h3>
+        <span class="section-score ${getScoreClass(score.pct)}">${score.achieved}/${score.max} (${score.pct}%)</span>
+      </div>
+      <div class="section-items ${isOpen ? 'open' : ''}">`;
+
+    section.items.forEach(item => {
+      const ans = auditState.answers[item.id] || '';
+      const comment = auditState.comments[item.id] || '';
+      html += `<div class="item">
+        <div class="item-header">
+          <span class="item-num">${item.id}</span>
+          <span class="item-text">${item.text}</span>
+          <span class="item-weight wt-${item.wt}">${item.wt}</span>
+        </div>
+        <div class="answer-row">
+          <button class="answer-btn compliant ${ans === 'compliant' ? 'selected' : ''}" data-item="${item.id}" data-answer="compliant">Compliant</button>
+          <button class="answer-btn non-compliant ${ans === 'non-compliant' ? 'selected' : ''}" data-item="${item.id}" data-answer="non-compliant">Non-Compliant</button>
+          <button class="answer-btn na ${ans === 'na' ? 'selected' : ''}" data-item="${item.id}" data-answer="na">N/A</button>
+        </div>
+        <textarea class="comment-input" data-comment="${item.id}" placeholder="Comments / Action Required">${comment}</textarea>
+      </div>`;
+    });
+
+    html += '</div></div>';
+  });
+
+  return html;
+}
+
+function bindEvents() {
+  // Tab navigation
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.activeTab = btn.dataset.tab;
+      render();
+    };
+  });
+
+  if (state.activeTab === 'dashboard') return;
+
+  const auditKey = state.activeTab;
+  const auditState = state.audits[auditKey];
+
+  // Info fields
+  document.querySelectorAll('[data-info]').forEach(input => {
+    input.addEventListener('change', () => {
+      auditState.info[input.dataset.info] = input.value;
+      saveState();
+    });
+  });
+
+  // Section toggle
+  document.querySelectorAll('[data-toggle-section]').forEach(el => {
+    el.onclick = () => {
+      const si = el.dataset.toggleSection;
+      auditState.openSections[si] = !auditState.openSections[si];
+      el.nextElementSibling.classList.toggle('open');
+      saveState();
+    };
+  });
+
+  // Answer buttons
+  document.querySelectorAll('.answer-btn').forEach(btn => {
+    btn.onclick = () => {
+      const itemId = btn.dataset.item;
+      const answer = btn.dataset.answer;
+      // Toggle off if same answer clicked
+      if (auditState.answers[itemId] === answer) {
+        delete auditState.answers[itemId];
+      } else {
+        auditState.answers[itemId] = answer;
+      }
+      saveState();
+      render();
+      // Restore scroll position
+    };
+  });
+
+  // Comments
+  document.querySelectorAll('[data-comment]').forEach(textarea => {
+    textarea.addEventListener('input', () => {
+      auditState.comments[textarea.dataset.comment] = textarea.value;
+      saveState();
+    });
+  });
+}
+
+// ===== TOAST =====
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ===== SAVE/CLEAR =====
+function saveProgress() { saveState(); showToast('Progress saved!'); }
+
+function clearAll() {
+  if (confirm('Are you sure you want to clear ALL audit data? This cannot be undone.')) {
+    state = { activeTab: 'dashboard', audits: {} };
+    saveState();
+    render();
+    showToast('All data cleared');
+  }
+}
+
+// ===== EXCEL EXPORT =====
+function exportToExcel() {
+  const wb = XLSX.utils.book_new();
+
+  // --- Summary Dashboard ---
+  const dashData = [];
+  dashData.push(['Smart Little People  |  Compliance Audit Dashboard']);
+  dashData.push([]);
+  dashData.push([null, 'AUDIT SCORE SUMMARY']);
+  dashData.push([null, 'Audit Type', 'Section', 'Achieved', 'Max', 'Score %']);
+
+  const auditMeta = [
+    { key: 'licensing', label: 'Childcare Licensing' },
+    { key: 'ahs', label: 'Alberta Health (AHS)' },
+    { key: 'kitchen', label: 'Kitchen' },
+    { key: 'pedagogy', label: 'Prog. & Pedagogy' }
+  ];
+
+  auditMeta.forEach(m => {
+    initAuditState(m.key);
+    let first = true;
+    AUDITS[m.key].sections.forEach((sec, i) => {
+      const s = calcSectionScore(m.key, i);
+      dashData.push([null, first ? m.label : null, sec.name, s.achieved, s.max, s.pct / 100]);
+      first = false;
+    });
+    const total = calcAuditTotal(m.key);
+    dashData.push([null, m.label + '  - TOTAL', null, total.achieved, total.max, total.pct / 100]);
+    dashData.push([]);
+  });
+
+  const dashWs = XLSX.utils.aoa_to_sheet(dashData);
+  dashWs['!cols'] = [{wch:4},{wch:24},{wch:38},{wch:10},{wch:8},{wch:10}];
+  // Format percentage cells
+  for (let r = 0; r < dashData.length; r++) {
+    const cell = dashWs[XLSX.utils.encode_cell({r, c:5})];
+    if (cell && typeof cell.v === 'number') { cell.z = '0.0%'; }
+  }
+  XLSX.utils.book_append_sheet(wb, dashWs, 'Summary Dashboard');
+
+  // --- Each audit sheet ---
+  const sheetNames = {
+    licensing: 'Childcare Licensing',
+    ahs: 'AHS Audit',
+    kitchen: 'Kitchen Audit',
+    pedagogy: 'Programming & Pedagogy'
+  };
+
+  Object.keys(AUDITS).forEach(auditKey => {
+    initAuditState(auditKey);
+    const audit = AUDITS[auditKey];
+    const auditState = state.audits[auditKey];
+    const info = auditState.info;
+    const data = [];
+
+    data.push([`Smart Little People  |  ${audit.title}`]);
+    data.push(['Date:', info.date, null, null, 'Room / Classroom:', info.room]);
+    data.push(['Inspector:', info.inspector, null, null, 'Teacher 1:', info.teacher1]);
+    data.push(['Teacher 2:', info.teacher2]);
+    data.push(['Weight:  1 = Standard (Low admin penalty risk)  |  2 = Important (Medium penalty risk $250-$4,000)  |  3 = Critical (High penalty risk $500-$10,000)']);
+    data.push(['#', 'Compliance Area', 'Wt', 'Answer', 'Pts', 'Max', 'Comments / Action Required']);
+
+    audit.sections.forEach((section, si) => {
+      data.push([`Section ${section.name}`]);
+      section.items.forEach(item => {
+        const ans = auditState.answers[item.id] || '';
+        let answerText = '';
+        let pts = 0;
+        let max = item.wt;
+        if (ans === 'compliant') { answerText = 'Compliant'; pts = item.wt; }
+        else if (ans === 'non-compliant') { answerText = 'Non-Compliant'; pts = 0; }
+        else if (ans === 'na') { answerText = 'N/A'; pts = 0; max = 0; }
+        const comment = auditState.comments[item.id] || '';
+        data.push([item.id, item.text, item.wt, answerText, pts, max, comment]);
+      });
+      const score = calcSectionScore(auditKey, si);
+      data.push(['Section Score', null, null, null, score.achieved, score.max, score.pct / 100]);
+      data.push([]);
+    });
+
+    const total = calcAuditTotal(auditKey);
+    data.push(['OVERALL AUDIT SCORE', null, null, null, total.achieved, total.max, total.pct / 100]);
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [{wch:12},{wch:65},{wch:5},{wch:16},{wch:6},{wch:6},{wch:40}];
+    // Format percentage cells
+    for (let r = 0; r < data.length; r++) {
+      const cell = ws[XLSX.utils.encode_cell({r, c:6})];
+      if (cell && typeof cell.v === 'number') { cell.z = '0.0%'; }
+    }
+    XLSX.utils.book_append_sheet(wb, ws, sheetNames[auditKey]);
+  });
+
+  // Generate filename with date
+  const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const room = state.audits.licensing?.info?.room || 'Audit';
+  const safeName = room.replace(/[^a-zA-Z0-9]/g, '_') || 'Audit';
+  XLSX.writeFile(wb, `SLP_Compliance_${safeName}_${today}.xlsx`);
+  showToast('Excel file exported!');
+}
+
+// ===== INIT =====
+render();
+</script>
+</body>
+</html>
