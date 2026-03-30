@@ -1078,8 +1078,16 @@ async function ensureProfile(fullName) {
 }
 
 async function loadProfile() {
-  const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
-  currentProfile = data || { id: currentUser.id, full_name: currentUser.email, role: 'teacher' };
+  const { data, error } = await sb.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
+  if (data) {
+    currentProfile = data;
+  } else {
+    // RLS might block direct read, use RPC to get role
+    const { data: roleData } = await sb.rpc('get_my_role');
+    const role = roleData || 'teacher';
+    const fullName = currentUser.user_metadata?.full_name || currentUser.email;
+    currentProfile = { id: currentUser.id, full_name: fullName, role: role };
+  }
 }
 
 async function handleLogout() {
