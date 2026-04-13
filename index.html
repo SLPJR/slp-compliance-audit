@@ -179,6 +179,18 @@ input,select,textarea{font-family:inherit;font-size:1rem}
 /* audit info form */
 .audit-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:500px){.audit-info-grid{grid-template-columns:1fr}}
+
+/* Settings */
+.settings-list{margin-bottom:12px}
+.settings-list-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #eee;font-size:.95rem}
+.settings-list-item:last-child{border-bottom:none}
+.settings-del-btn{background:var(--danger);color:var(--white);border:none;border-radius:50%;width:26px;height:26px;font-size:.85rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.settings-add-row{display:flex;gap:8px;align-items:center}
+.settings-add-row input{flex:1;padding:10px 12px;border:1.5px solid #ddd;border-radius:var(--radius);font-size:1rem}
+.settings-add-row input:focus{outline:none;border-color:var(--primary)}
+
+/* Select styling to match inputs */
+.form-group select{appearance:auto;background:var(--white)}
 </style>
 </head>
 <body>
@@ -243,6 +255,10 @@ input,select,textarea{font-family:inherit;font-size:1rem}
         <span class="menu-icon">&#128202;</span>
         <span>Admin Dashboard</span>
       </button>
+      <button class="menu-btn" id="settingsBtn" style="display:none" onclick="navigate('settings')">
+        <span class="menu-icon">&#9881;</span>
+        <span>Settings</span>
+      </button>
       <button class="menu-btn" onclick="handleLogout()" style="color:var(--danger)">
         <span class="menu-icon">&#128682;</span>
         <span>Logout</span>
@@ -292,10 +308,10 @@ input,select,textarea{font-family:inherit;font-size:1rem}
     <h3 style="margin-bottom:10px">Audit Information</h3>
     <div class="audit-info-grid">
       <div class="form-group"><label>Date</label><input type="date" id="auditDate"></div>
-      <div class="form-group"><label>Room / Classroom</label><input type="text" id="auditRoom" placeholder="e.g. Infant Room A"></div>
-      <div class="form-group"><label>Inspector</label><input type="text" id="auditInspector" placeholder="Inspector name"></div>
-      <div class="form-group"><label>Teacher 1</label><input type="text" id="auditTeacher1" placeholder="Teacher name"></div>
-      <div class="form-group"><label>Teacher 2</label><input type="text" id="auditTeacher2" placeholder="Teacher name (optional)"></div>
+      <div class="form-group"><label>Room / Classroom</label><select id="auditRoom"><option value="">-- Select --</option></select></div>
+      <div class="form-group"><label>Inspector</label><select id="auditInspector"><option value="">-- Select --</option></select></div>
+      <div class="form-group"><label>Teacher 1</label><select id="auditTeacher1"><option value="">-- Select --</option></select></div>
+      <div class="form-group"><label>Teacher 2</label><select id="auditTeacher2"><option value="">-- Select --</option><option value="">N/A</option></select></div>
     </div>
   </div>
   <div id="auditSections"></div>
@@ -376,6 +392,35 @@ input,select,textarea{font-family:inherit;font-size:1rem}
   <div class="card"><h3 style="margin-bottom:8px;color:var(--primary)">Scores by Section</h3><table class="dash-table" id="sectionTable"><thead><tr><th>Section</th><th>Avg Score</th></tr></thead><tbody id="sectionBody"></tbody></table></div>
 </div>
 
+<!-- Settings View -->
+<div class="view" id="view-settings">
+  <h2 style="margin-bottom:16px;color:var(--primary)">Settings</h2>
+  <div class="card">
+    <h2>Classrooms</h2>
+    <div id="settingsClassroomsList" class="settings-list"></div>
+    <div class="settings-add-row">
+      <input type="text" id="addClassroomInput" placeholder="New classroom name">
+      <button class="btn btn-success btn-sm" onclick="addLookupItem('classrooms','addClassroomInput')">Add</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Inspectors</h2>
+    <div id="settingsInspectorsList" class="settings-list"></div>
+    <div class="settings-add-row">
+      <input type="text" id="addInspectorInput" placeholder="New inspector name">
+      <button class="btn btn-success btn-sm" onclick="addLookupItem('inspectors','addInspectorInput')">Add</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Teachers</h2>
+    <div id="settingsTeachersList" class="settings-list"></div>
+    <div class="settings-add-row">
+      <input type="text" id="addTeacherInput" placeholder="New teacher name">
+      <button class="btn btn-success btn-sm" onclick="addLookupItem('teachers','addTeacherInput')">Add</button>
+    </div>
+  </div>
+</div>
+
 <!-- Lightbox -->
 <div class="lightbox" id="lightbox" style="display:none" onclick="closeLightbox()">
   <button class="close-lb" onclick="closeLightbox()">&times;</button>
@@ -401,6 +446,9 @@ let photoTargetItem = null;
 let viewStack = ['login'];
 let detailAuditId = null;
 let dashCharts = {};
+let lookupClassrooms = [];
+let lookupInspectors = [];
+let lookupTeachers = [];
 
 // ===== AUDIT DATA =====
 const AUDITS = {
@@ -984,6 +1032,14 @@ function showView(viewName) {
         navigate('menu');
       }
       break;
+    case 'settings':
+      if (currentProfile && currentProfile.role === 'admin') {
+        document.getElementById('view-settings').classList.add('active');
+        loadSettings();
+      } else {
+        navigate('menu');
+      }
+      break;
     default:
       navigate('menu');
   }
@@ -995,7 +1051,7 @@ function goBack() {
   const base = parts[0];
   if (base === 'audit') navigate('select-audit');
   else if (base === 'detail') navigate('history');
-  else if (['select-audit', 'history', 'dashboard'].includes(base)) navigate('menu');
+  else if (['select-audit', 'history', 'dashboard', 'settings'].includes(base)) navigate('menu');
   else navigate('menu');
 }
 
@@ -1044,11 +1100,13 @@ async function handleLogin(e) {
       currentUser = data.user;
       await ensureProfile(fullName);
     } else {
+
       const { data, error } = await sb.auth.signInWithPassword({ email, password });
       if (error) throw error;
       currentUser = data.user;
       await loadProfile();
     }
+    await loadLookups();
     hideSpinner();
     navigate('menu');
   } catch (err) {
@@ -1101,6 +1159,7 @@ function refreshMenu() {
   if (!currentProfile) return;
   document.getElementById('userGreeting').innerHTML = 'Welcome, <strong>' + escHtml(currentProfile.full_name || currentUser.email) + '</strong>';
   document.getElementById('dashboardBtn').style.display = currentProfile.role === 'admin' ? 'flex' : 'none';
+  document.getElementById('settingsBtn').style.display = currentProfile.role === 'admin' ? 'flex' : 'none';
 }
 
 // ===== AUDIT FORM =====
@@ -1120,10 +1179,12 @@ function initAuditForm(type) {
 
   document.getElementById('auditFormTitle').textContent = audit.label;
   document.getElementById('auditDate').value = todayStr();
-  document.getElementById('auditRoom').value = '';
-  document.getElementById('auditInspector').value = '';
-  document.getElementById('auditTeacher1').value = '';
-  document.getElementById('auditTeacher2').value = '';
+
+  // Populate dropdowns from lookup data
+  populateSelect('auditRoom', lookupClassrooms);
+  populateSelect('auditInspector', lookupInspectors);
+  populateSelect('auditTeacher1', lookupTeachers);
+  populateSelect('auditTeacher2', lookupTeachers, true);
 
   const container = document.getElementById('auditSections');
   container.innerHTML = '';
@@ -1857,6 +1918,101 @@ function destroyChart(key) {
   }
 }
 
+// ===== LOOKUPS & SETTINGS =====
+function populateSelect(selectId, items, includeNA) {
+  const sel = document.getElementById(selectId);
+  sel.innerHTML = '<option value="">-- Select --</option>';
+  if (includeNA) {
+    sel.innerHTML += '<option value="">N/A</option>';
+  }
+  items.forEach(item => {
+    const opt = document.createElement('option');
+    opt.value = item.name;
+    opt.textContent = item.name;
+    sel.appendChild(opt);
+  });
+}
+
+async function loadLookups() {
+  try {
+    const [classRes, inspRes, teachRes] = await Promise.all([
+      sb.from('classrooms').select('*').eq('active', true).order('name'),
+      sb.from('inspectors').select('*').eq('active', true).order('name'),
+      sb.from('teachers').select('*').eq('active', true).order('name')
+    ]);
+    lookupClassrooms = classRes.data || [];
+    lookupInspectors = inspRes.data || [];
+    lookupTeachers = teachRes.data || [];
+  } catch (err) {
+    console.error('Error loading lookups:', err);
+  }
+}
+
+async function loadSettings() {
+  showSpinner();
+  try {
+    await loadLookups();
+    renderSettingsList('settingsClassroomsList', 'classrooms', lookupClassrooms);
+    renderSettingsList('settingsInspectorsList', 'inspectors', lookupInspectors);
+    renderSettingsList('settingsTeachersList', 'teachers', lookupTeachers);
+    hideSpinner();
+  } catch (err) {
+    hideSpinner();
+    toast('Error loading settings: ' + err.message, 'error');
+  }
+}
+
+function renderSettingsList(containerId, table, items) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  if (items.length === 0) {
+    container.innerHTML = '<div style="padding:8px 12px;color:var(--text-light);font-size:.9rem">No items yet</div>';
+    return;
+  }
+  items.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'settings-list-item';
+    div.innerHTML = '<span>' + escHtml(item.name) + '</span>';
+    const delBtn = document.createElement('button');
+    delBtn.className = 'settings-del-btn';
+    delBtn.innerHTML = '&times;';
+    delBtn.onclick = () => deleteLookupItem(table, item.id);
+    div.appendChild(delBtn);
+    container.appendChild(div);
+  });
+}
+
+async function addLookupItem(table, inputId) {
+  const input = document.getElementById(inputId);
+  const name = input.value.trim();
+  if (!name) { toast('Please enter a name', 'error'); return; }
+
+  showSpinner();
+  try {
+    const { error } = await sb.from(table).insert({ name: name, active: true });
+    if (error) throw error;
+    input.value = '';
+    toast('Added successfully', 'success');
+    await loadSettings();
+  } catch (err) {
+    hideSpinner();
+    toast('Error adding item: ' + err.message, 'error');
+  }
+}
+
+async function deleteLookupItem(table, id) {
+  showSpinner();
+  try {
+    const { error } = await sb.from(table).update({ active: false }).eq('id', id);
+    if (error) throw error;
+    toast('Removed successfully', 'success');
+    await loadSettings();
+  } catch (err) {
+    hideSpinner();
+    toast('Error removing item: ' + err.message, 'error');
+  }
+}
+
 // ===== INIT =====
 async function init() {
   await openPhotoDB();
@@ -1867,6 +2023,7 @@ async function init() {
     if (session && session.user) {
       currentUser = session.user;
       await loadProfile();
+      await loadLookups();
       hideSpinner();
       const hash = window.location.hash.replace('#', '') || 'menu';
       navigate(hash);
