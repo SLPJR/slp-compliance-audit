@@ -474,6 +474,7 @@ input,select,textarea{font-family:inherit;font-size:1rem}
   <div class="card"><h3 style="margin-bottom:8px;color:var(--primary)">Scores by Teacher</h3><table class="dash-table" id="teacherTable"><thead><tr><th>Teacher</th><th>Audit Type</th><th># Audits</th><th>Avg Score</th></tr></thead><tbody id="teacherBody"></tbody></table></div>
   <div class="chart-container"><h3>Weekly Breakdown</h3><canvas id="chartWeekly"></canvas></div>
   <div class="chart-container"><h3>Individual Audit Scores by Week</h3><canvas id="chartIndividual"></canvas></div>
+  <div class="chart-container"><h3>Daily Audit Scores</h3><canvas id="chartDaily"></canvas></div>
   <div class="card"><h3 style="margin-bottom:8px;color:var(--primary)">Scores by Section</h3><table class="dash-table" id="sectionTable"><thead><tr><th>Section</th><th>Avg Score</th></tr></thead><tbody id="sectionBody"></tbody></table></div>
 </div>
 
@@ -2654,6 +2655,73 @@ async function loadDashboard() {
           responsive: true,
           scales: { y: { beginAtZero: true, max: 100 } },
           plugins: { legend: { position: 'bottom' } }
+        }
+      });
+    }
+
+    // ---- Daily Audit Scores (actual dates on x-axis) ----
+    destroyChart('chartDaily');
+    if (filtered.length > 0) {
+      const dailyByType = {};
+      filtered.forEach(a => {
+        const aType = auditLabel(a.audit_type);
+        if (!dailyByType[aType]) dailyByType[aType] = [];
+        dailyByType[aType].push({
+          date: a.audit_date,
+          score: a.total_pct || 0,
+          detail: escHtml(a.room || '-') + ' | ' + escHtml(a.teacher1 || '-')
+        });
+      });
+
+      const dailyColors = ['#1a5276', '#2980b9', '#27ae60', '#f39c12', '#e74c3c', '#8e44ad'];
+      const dailyTypes = Object.keys(dailyByType).sort();
+      const dailyDatasets = dailyTypes.map((type, i) => ({
+        label: type,
+        data: dailyByType[type].map(e => ({ x: e.date, y: e.score, detail: e.detail })),
+        backgroundColor: dailyColors[i % dailyColors.length] + 'CC',
+        borderColor: dailyColors[i % dailyColors.length],
+        borderWidth: 2,
+        pointRadius: 6,
+        pointHoverRadius: 8,
+        showLine: true,
+        tension: 0.3
+      }));
+
+      dashCharts.chartDaily = new Chart(document.getElementById('chartDaily'), {
+        type: 'scatter',
+        data: { datasets: dailyDatasets },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              type: 'category',
+              labels: [...new Set(filtered.map(a => a.audit_date))].sort(),
+              ticks: {
+                callback: function(val, idx, ticks) {
+                  const dateStr = this.getLabelForValue(val);
+                  const d = parseLocalDate(dateStr);
+                  return d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+                }
+              }
+            },
+            y: { beginAtZero: true, max: 100, title: { display: true, text: 'Score %' } }
+          },
+          plugins: {
+            legend: { position: 'bottom' },
+            tooltip: {
+              callbacks: {
+                title: function(ctx) {
+                  const dateStr = ctx[0].parsed.x !== undefined ? dailyDatasets[ctx[0].datasetIndex].data[ctx[0].dataIndex].x : '';
+                  const d = parseLocalDate(dateStr);
+                  return d.toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' });
+                },
+                label: function(ctx) {
+                  const pt = ctx.dataset.data[ctx.dataIndex];
+                  return ctx.dataset.label + ': ' + pt.y + '% — ' + (pt.detail || '');
+                }
+              }
+            }
+          }
         }
       });
     }
