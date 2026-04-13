@@ -318,10 +318,10 @@ input,select,textarea{font-family:inherit;font-size:1rem}
     <h3 style="margin-bottom:10px">Audit Information</h3>
     <div class="audit-info-grid">
       <div class="form-group"><label>Date</label><input type="date" id="auditDate"></div>
-      <div class="form-group"><label>Room / Classroom</label><select id="auditRoom"><option value="">-- Select --</option></select></div>
+      <div class="form-group" id="fieldRoom"><label>Room / Classroom</label><select id="auditRoom"><option value="">-- Select --</option></select></div>
       <div class="form-group"><label>Inspector</label><select id="auditInspector"><option value="">-- Select --</option></select></div>
-      <div class="form-group"><label>Teacher 1</label><select id="auditTeacher1"><option value="">-- Select --</option></select></div>
-      <div class="form-group"><label>Teacher 2</label><select id="auditTeacher2"><option value="">-- Select --</option><option value="">N/A</option></select></div>
+      <div class="form-group" id="fieldTeacher1"><label>Teacher 1</label><select id="auditTeacher1"><option value="">-- Select --</option></select></div>
+      <div class="form-group" id="fieldTeacher2"><label>Teacher 2</label><select id="auditTeacher2"><option value="">-- Select --</option><option value="">N/A</option></select></div>
     </div>
   </div>
   <div id="auditSections"></div>
@@ -1343,6 +1343,12 @@ function initAuditForm(type) {
   document.getElementById('auditFormTitle').textContent = audit.label;
   document.getElementById('auditDate').value = todayStr();
 
+  // Hide room/teacher fields for facility-wide audits
+  const isFacility = (type === 'admin_facility');
+  document.getElementById('fieldRoom').style.display = isFacility ? 'none' : '';
+  document.getElementById('fieldTeacher1').style.display = isFacility ? 'none' : '';
+  document.getElementById('fieldTeacher2').style.display = isFacility ? 'none' : '';
+
   // Populate dropdowns from lookup data
   populateSelect('auditRoom', lookupClassrooms);
   populateSelect('auditInspector', lookupInspectors);
@@ -1532,7 +1538,7 @@ async function submitAudit() {
   const teacher2 = document.getElementById('auditTeacher2').value.trim();
 
   if (!auditDate) { toast('Please enter audit date', 'error'); return; }
-  if (!room) { toast('Please enter room/classroom', 'error'); return; }
+  if (!room && currentAuditType !== 'admin_facility') { toast('Please enter room/classroom', 'error'); return; }
 
   // Calculate totals
   const audit = AUDITS[currentAuditType];
