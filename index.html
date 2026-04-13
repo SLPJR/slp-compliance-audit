@@ -248,6 +248,22 @@ input,select,textarea{font-family:inherit;font-size:1rem}
   </div>
 </div>
 
+<!-- Reset Password View -->
+<div class="view" id="view-reset-password" style="display:none">
+  <div class="card" style="max-width:420px;margin:40px auto">
+    <h2 style="color:var(--primary);margin-bottom:16px">Set New Password</h2>
+    <div class="form-group">
+      <label>New Password</label>
+      <input type="password" id="newPassword" required placeholder="Enter new password" minlength="6">
+    </div>
+    <div class="form-group">
+      <label>Confirm Password</label>
+      <input type="password" id="confirmPassword" required placeholder="Confirm new password" minlength="6">
+    </div>
+    <button class="btn btn-primary btn-block btn-lg" onclick="handleResetPassword()">Update Password</button>
+  </div>
+</div>
+
 <!-- Menu View -->
 <div class="view" id="view-menu">
   <div style="max-width:500px;margin:20px auto">
@@ -1261,6 +1277,19 @@ async function handleForgotPassword(e) {
   hideSpinner();
   if (error) { toast('Error: ' + error.message, 'error'); }
   else { toast('Password reset link sent to ' + email + '. Check your inbox!', 'success'); }
+}
+
+async function handleResetPassword() {
+  const newPw = document.getElementById('newPassword').value;
+  const confirmPw = document.getElementById('confirmPassword').value;
+  if (!newPw || newPw.length < 6) { toast('Password must be at least 6 characters', 'error'); return; }
+  if (newPw !== confirmPw) { toast('Passwords do not match', 'error'); return; }
+  showSpinner();
+  const { error } = await sb.auth.updateUser({ password: newPw });
+  hideSpinner();
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast('Password updated successfully!', 'success');
+  navigate('menu');
 }
 
 async function handleLogin(e) {
@@ -2553,7 +2582,11 @@ async function init() {
 
   // Listen for auth state changes
   sb.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_OUT') {
+    if (event === 'PASSWORD_RECOVERY') {
+      // Show reset password form
+      document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+      document.getElementById('view-reset-password').style.display = 'block';
+    } else if (event === 'SIGNED_OUT') {
       currentUser = null;
       currentProfile = null;
       navigate('login');
