@@ -271,6 +271,11 @@ input,select,textarea{font-family:inherit;font-size:1rem}
 <div class="view" id="view-select-audit">
   <h2 style="margin-bottom:16px;color:var(--primary)">Select Audit Type</h2>
   <div class="audit-type-grid">
+    <div class="audit-type-card" onclick="startAudit('admin_facility')">
+      <div class="icon">&#127963;</div>
+      <h3>Centre Admin &amp; Facility</h3>
+      <p>Centre administration, staffing, facility, and emergency preparedness</p>
+    </div>
     <div class="audit-type-card" onclick="startAudit('licensing')">
       <div class="icon">&#127970;</div>
       <h3>Childcare Licensing</h3>
@@ -290,6 +295,11 @@ input,select,textarea{font-family:inherit;font-size:1rem}
       <div class="icon">&#128218;</div>
       <h3>Programming &amp; Pedagogy</h3>
       <p>Curriculum, documentation, inclusion and family engagement</p>
+    </div>
+    <div class="audit-type-card" onclick="startAudit('daily_compliance')">
+      <div class="icon">&#128203;</div>
+      <h3>Daily Compliance</h3>
+      <p>Daily child and staff headcount verification</p>
     </div>
   </div>
 </div>
@@ -324,7 +334,7 @@ input,select,textarea{font-family:inherit;font-size:1rem}
   <div class="history-filters card">
     <div class="form-group">
       <label>Audit Type</label>
-      <select id="histFilterType"><option value="">All Types</option><option value="licensing">Licensing</option><option value="ahs">AHS</option><option value="kitchen">Kitchen</option><option value="pedagogy">Pedagogy</option></select>
+      <select id="histFilterType"><option value="">All Types</option><option value="admin_facility">Admin & Facility</option><option value="licensing">Licensing</option><option value="ahs">AHS</option><option value="kitchen">Kitchen</option><option value="pedagogy">Pedagogy</option><option value="daily_compliance">Daily Compliance</option></select>
     </div>
     <div class="form-group">
       <label>From</label>
@@ -376,7 +386,7 @@ input,select,textarea{font-family:inherit;font-size:1rem}
     </div>
     <div class="form-group">
       <label>Audit Type</label>
-      <select id="dashType"><option value="">All Types</option><option value="licensing">Licensing</option><option value="ahs">AHS</option><option value="kitchen">Kitchen</option><option value="pedagogy">Pedagogy</option></select>
+      <select id="dashType"><option value="">All Types</option><option value="admin_facility">Admin & Facility</option><option value="licensing">Licensing</option><option value="ahs">AHS</option><option value="kitchen">Kitchen</option><option value="pedagogy">Pedagogy</option><option value="daily_compliance">Daily Compliance</option></select>
     </div>
     <div class="form-group">
       <label>Room</label>
@@ -452,43 +462,200 @@ let lookupTeachers = [];
 
 // ===== AUDIT DATA =====
 const AUDITS = {
+  admin_facility: {
+    label: 'Centre Admin & Facility',
+    sections: [
+      {
+        name: 'Section A - Program Operations & Licensing',
+        items: [
+          { id: 'A1', text: 'Program plan is current, posted, and followed daily', weight: 2 },
+          { id: 'A2', text: 'Operational hours match the approved license', weight: 2 },
+          { id: 'A3', text: 'No unapproved ECS or outside programs operating in licensed space', weight: 2 },
+          { id: 'A4', text: 'English/Spanish language immersion strategies documented in the program plan', weight: 2 },
+          { id: 'A5', text: 'Children\'s bilingual (English/Spanish) progress monitored using age-appropriate observation tools', weight: 2 },
+          { id: 'A6', text: 'Licensing authority notified of any changes to the original application (staffing, program, capacity, etc.)', weight: 2 }
+        ]
+      },
+      {
+        name: 'Section B - Staffing Credentials & Qualification',
+        items: [
+          { id: 'B1', text: 'At least 1 in 3 staff are ECE Level 2+ between 8:30 AM and 4:30 PM', weight: 3 },
+          { id: 'B2', text: 'Supervisor holds ECE Level 3 or a valid exemption is posted and current', weight: 3 },
+          { id: 'B3', text: 'Staff trained in child observation and documentation practices', weight: 2 },
+          { id: 'B4', text: 'Educators participate in at least one professional development activity per quarter', weight: 2 },
+          { id: 'B5', text: 'New staff receive formal onboarding and mentorship in the first 30 days', weight: 2 },
+          { id: 'B6', text: 'Current First Aid certificate on file for all staff', weight: 3 },
+          { id: 'B7', text: 'ECE certification copy on file for all staff (Level 1, 2, or 3)', weight: 2 },
+          { id: 'B8', text: 'CRC (Criminal Record Check) & VSS (Vulnerable Sector Search) on file and valid for all staff, including new hires', weight: 3 }
+        ]
+      },
+      {
+        name: 'Section C - Posting & Regulatory Documentation',
+        items: [
+          { id: 'C1', text: 'Fire and health inspection certificates posted and current', weight: 1 },
+          { id: 'C2', text: 'Childcare license posted in a visible location', weight: 2 },
+          { id: 'C3', text: 'Most recent licensing inspection report posted', weight: 1 },
+          { id: 'C4', text: 'Any exemptions or probationary license posted (if applicable)', weight: 1 },
+          { id: 'C5', text: 'Any variance notices posted (if applicable)', weight: 1 },
+          { id: 'C6', text: 'Policies shared with and accessible to parents and staff', weight: 1 },
+          { id: 'C7', text: 'Director/Manager name posted in a visible location within the centre', weight: 1 },
+          { id: 'C8', text: 'ECE and ECEA certificates posted in a visible location', weight: 1 }
+        ]
+      },
+      {
+        name: 'Section D - Nutrition & Menu Oversight',
+        items: [
+          { id: 'D1', text: 'Meals and snacks meet Canada Food Guide / Alberta Health Guide requirements', weight: 2 },
+          { id: 'D2', text: 'Menu posted in a visible location in each room', weight: 1 },
+          { id: 'D3', text: 'Parents informed about foods and drinks served; allergy-related substitutions communicated', weight: 2 }
+        ]
+      },
+      {
+        name: 'Section F - Playground & Outdoor Facility Safety',
+        items: [
+          { id: 'F1', text: 'Daily playground safety inspection log completed before children access the area', weight: 3 },
+          { id: 'F2', text: 'Fall zones have minimum 1.8 m depth of engineered wood fiber, rubber mulch, or sand', weight: 3 },
+          { id: 'F3', text: 'All equipment openings checked: no entrapment hazards in the 9-23 cm dangerous zone', weight: 3 },
+          { id: 'F4', text: 'No strangulation hazards present: no drawstrings, loose ropes, or protrusions that catch clothing', weight: 3 },
+          { id: 'F5', text: 'Perimeter fence minimum 1.2 m high with childproof self-latching, outward-opening gate', weight: 3 },
+          { id: 'F6', text: 'Gate latch inaccessible to children; gate inspected and functional before each use', weight: 2 },
+          { id: 'F7', text: 'All equipment anchored securely; no exposed bolt ends, sharp edges, or splintered wood', weight: 3 },
+          { id: 'F8', text: 'Platforms above 75 cm have appropriate guardrails and protective barriers', weight: 2 },
+          { id: 'F9', text: 'Sun protection available: shade structure or sun canopy in place; hats worn on UV index 3+', weight: 1 },
+          { id: 'F10', text: 'No toxic plants identified within or adjacent to the play space', weight: 2 },
+          { id: 'F11', text: 'No pesticides or chemicals applied to playground area; application records maintained', weight: 2 },
+          { id: 'F12', text: 'Portable first aid kit present and fully stocked on the playground at all times', weight: 3 },
+          { id: 'F13', text: 'No standing water, ice, or drainage issues creating slip or entrapment hazards', weight: 2 },
+          { id: 'F14', text: 'Outdoor water play equipment cleaned and sanitized after each use', weight: 2 },
+          { id: 'F15', text: 'Children visible at all times; no blind spots in outdoor area layout', weight: 3 },
+          { id: 'F16', text: 'Age-appropriate zone separation: infant/toddler play area separate from school-age equipment', weight: 2 }
+        ]
+      },
+      {
+        name: 'Section G - Environmental & Facility Health',
+        items: [
+          { id: 'G1', text: 'Bathrooms free of persistent odors; ventilation functioning correctly', weight: 1 },
+          { id: 'G2', text: 'Rooms well ventilated: windows operable or HVAC functioning and regularly maintained', weight: 2 },
+          { id: 'G3', text: 'Outdoor water play equipment drained and sanitized after each use', weight: 2 },
+          { id: 'G4', text: 'Building structure in good condition: no visible damage, moisture staining, or structural hazards', weight: 2 },
+          { id: 'G5', text: 'All furnishings in good condition: no broken pieces, sharp edges, or unstable items', weight: 2 },
+          { id: 'G6', text: 'Toys and equipment in good condition: no broken parts, sharp edges, or choking hazards', weight: 2 },
+          { id: 'G7', text: 'Cleaning and disinfecting products are Health Canada approved (DIN-registered) to effectively kill germs', weight: 2 },
+          { id: 'G8', text: 'Dangerous objects, liquids, and cleaning products stored securely out of children\'s reach at all times', weight: 3 },
+          { id: 'G9', text: 'Curtain and blind cords out of reach of children; looped cords tied, cut short, or secured with a cleat', weight: 3 },
+          { id: 'G10', text: 'Sleeping/rest equipment (cribs, cots, mats) in safe condition and appropriate for child\'s age and development', weight: 2 }
+        ]
+      },
+      {
+        name: 'Section H - Illness Response & Sick Child Protocols',
+        items: [
+          { id: 'H1', text: 'Sick child policy posted and communicated to all families at enrollment', weight: 2 }
+        ]
+      },
+      {
+        name: 'Section I - Outbreak Response & AHS Reporting',
+        items: [
+          { id: 'I1', text: 'Written outbreak response plan on file and accessible to all staff', weight: 2 },
+          { id: 'I2', text: 'AHS notified when 2+ children/staff show same symptoms within 72 hours', weight: 3 },
+          { id: 'I3', text: 'Parents notified of suspected or confirmed outbreak via written notice', weight: 3 },
+          { id: 'I4', text: 'Symptomatic staff sent home; replacement arranged to maintain ratios', weight: 3 },
+          { id: 'I5', text: 'Outbreak closure or cohorting decision made in consultation with AHS inspector', weight: 3 }
+        ]
+      },
+      {
+        name: 'Section J - Family Relations & Community Support',
+        items: [
+          { id: 'J1', text: 'Parent orientation held for all new families within the first two weeks of enrollment', weight: 1 },
+          { id: 'J2', text: 'Family handbook current, distributed to all families, and signed/acknowledged on file', weight: 2 },
+          { id: 'J3', text: 'Family feedback mechanisms in place: surveys, suggestion box, formal complaint process', weight: 1 },
+          { id: 'J4', text: 'Community partnerships documented: speech-language, OT, family resource programs, etc.', weight: 2 },
+          { id: 'J5', text: 'Developmental concerns referred to appropriate external supports with family consent', weight: 3 }
+        ]
+      },
+      {
+        name: 'Section K - Emergency Preparedness',
+        items: [
+          { id: 'K1', text: 'Evacuation plan posted in a visible location in every room', weight: 3 },
+          { id: 'K2', text: 'Emergency exits clear, unobstructed, and accessible at all times', weight: 3 },
+          { id: 'K3', text: 'Fire extinguisher inspected, tagged, and not expired', weight: 3 },
+          { id: 'K4', text: 'First aid kit inspected, fully restocked, and accessible to all staff', weight: 3 },
+          { id: 'K5', text: 'Emergency evacuation supplies inspected and restocked', weight: 2 },
+          { id: 'K6', text: 'Fire drill practiced and documented every month', weight: 2 },
+          { id: 'K7', text: 'Elevator/lift maintenance current; inspection certificate on file (if applicable)', weight: 2 }
+        ]
+      },
+      {
+        name: 'Section L - Children\'s Records & Supervision',
+        items: [
+          { id: 'L1', text: 'Children\'s records complete and up to date: emergency contacts, health info, and consents', weight: 2 },
+          { id: 'L2', text: 'Children\'s arrival and departure times recorded accurately every day', weight: 2 },
+          { id: 'L3', text: 'Incident, illness, and unexpected event log maintained and up to date', weight: 2 },
+          { id: 'L4', text: 'Correct number of children licensed for each room; no overcapacity at any time', weight: 3 },
+          { id: 'L5', text: 'Correct ages of children in each approved licensed room', weight: 3 },
+          { id: 'L6', text: 'Food not used as reward or punishment at any time', weight: 2 },
+          { id: 'L7', text: 'No child neglect observed; all staff understand and fulfill mandatory reporting obligations', weight: 3 }
+        ]
+      },
+      {
+        name: 'Section M - Medication Management',
+        items: [
+          { id: 'M1', text: 'Medications (EpiPens, self-administered) stored out of children\'s reach but immediately accessible to authorized staff', weight: 3 },
+          { id: 'M2', text: 'Medication administration log maintained: child name, date, time, dosage, and staff signature', weight: 3 },
+          { id: 'M3', text: 'Signed parental consent form on file before any medication is administered to a child', weight: 3 }
+        ]
+      },
+      {
+        name: 'Section N - HR & Administrative Records',
+        items: [
+          { id: 'N1', text: 'Staff files current, complete, and available for review', weight: 2 },
+          { id: 'N2', text: 'Staff daily attendance recorded in scheduling system or Excel sheet', weight: 2 },
+          { id: 'N3', text: 'Staff and children attendance records scanned and uploaded to Dropbox', weight: 2 },
+          { id: 'N4', text: 'Staff paystubs prepared and distributed on schedule', weight: 1 },
+          { id: 'N5', text: 'Banking/direct deposit information on file for all staff', weight: 1 },
+          { id: 'N6', text: 'Any changes to staff ECE/ECEA certification status reported to the licensing authority', weight: 2 }
+        ]
+      },
+      {
+        name: 'Section O - Kinder & PUF Program Support',
+        items: [
+          { id: 'O1', text: 'PUF (Program Unit Funding) session notes up to date and filed', weight: 3 },
+          { id: 'O2', text: 'IPP (Individualized Program Plan) documents current with updates from OT, SLT, and Kinder teacher', weight: 3 },
+          { id: 'O3', text: 'IPP distributed to all involved parties for signature following team meeting', weight: 2 },
+          { id: 'O4', text: 'Therapy session notes shared with Educational Assistants (EAs) in a timely manner', weight: 2 }
+        ]
+      }
+    ]
+  },
   licensing: {
     label: 'Childcare Licensing',
     sections: [
       {
         name: 'Section 1 - Program Plan & Operations',
         items: [
-          { id: '1.1', text: 'Program plan is current, posted, and followed daily', weight: 2 },
-          { id: '1.2', text: 'Each age group is in its approved licensed room', weight: 3 },
-          { id: '1.3', text: 'No use of unapproved rooms (e.g., offices) as care spaces', weight: 3 },
-          { id: '1.4', text: 'Operational hours match the approved license', weight: 2 },
-          { id: '1.5', text: 'No unapproved ECS or outside programs operating in licensed space', weight: 2 },
-          { id: '1.6', text: 'Staff/child group lists posted in each room with assigned primary staff', weight: 1 }
+          { id: '1.1', text: 'Each age group is in its approved licensed room', weight: 3 },
+          { id: '1.2', text: 'Staff/child group lists posted in each room with assigned primary staff', weight: 1 }
         ]
       },
       {
         name: 'Section 2 - Staffing & Ratios',
         items: [
-          { id: '2.1', text: 'Required staff:child ratios maintained at all times (Schedule 1, s.27 ELCC Reg.)', weight: 3 },
-          { id: '2.2', text: 'Minimum of 2 staff present in groups of 7+ children (1 must be primary staff)', weight: 3 },
-          { id: '2.3', text: 'At least 1 in 3 staff are ECE Level 2+ between 8:30 AM and 4:30 PM', weight: 3 },
-          { id: '2.4', text: 'Supervisor holds ECE Level 3 or a valid exemption is posted and current', weight: 3 },
-          { id: '2.5', text: 'No staff left alone with children until Criminal Record Check + VSS cleared', weight: 3 }
+          { id: '2.1', text: 'Required staff:child ratios maintained at all times: infants <12mo 1:3; 12-19mo 1:4; 19mo-3yr 1:6; 3-4yr 1:8; 4yr+ 1:10', weight: 3 },
+          { id: '2.3', text: 'No staff left alone with children until Criminal Record Check (CRC) + Vulnerable Sector Search (VSS) cleared', weight: 3 }
         ]
       },
       {
         name: 'Section 3 - Staff Records',
         items: [
           { id: '3.1', text: 'Daily staff attendance complete: arrival, departure, and hours providing care', weight: 2 },
-          { id: '3.2', text: 'CRC & Vulnerable Sector Search on file within 6 months of hire; renewed every 3 years', weight: 3 },
-          { id: '3.3', text: 'Current First Aid certificate on file for at least 1 in every 2 staff', weight: 3 },
-          { id: '3.4', text: 'ECE certification copy on file for all staff (Level 1, 2, or 3)', weight: 2 }
+          { id: '3.2', text: 'Criminal Record Check (CRC) & Vulnerable Sector Search (VSS) on file within 6 months of hire; renewed every 3 years', weight: 3 },
+          { id: '3.3', text: 'Is the current First Aid certificate for the teachers in this classroom on file and up to date?', weight: 3 },
+          { id: '3.4', text: 'Is there an ECE certification copy on file for the teachers in this classroom?', weight: 2 }
         ]
       },
       {
         name: 'Section 4 - Children\'s Records',
         items: [
-          { id: '4.1', text: 'Full child file on record, including DOB, parent contacts, emergency contacts, health information, and consents. Are all records accurate and up to date?', weight: 2 },
+          { id: '4.1', text: 'Full child file on record, including DOB, parent contacts, emergency contacts, health info, and consents', weight: 2 },
           { id: '4.2', text: 'Daily child attendance records complete: arrival and departure times', weight: 2 },
           { id: '4.3', text: 'Incident reports complete, signed, and shared with parents and licensing as required', weight: 2 },
           { id: '4.4', text: 'Portable emergency records (binder/backpack) current and ready for off-site use', weight: 3 }
@@ -502,20 +669,27 @@ const AUDITS = {
           { id: '5.3', text: 'Tables and chairs available for every child in each room', weight: 2 },
           { id: '5.4', text: 'Infant areas free from large equipment or strollers blocking play space', weight: 2 },
           { id: '5.5', text: 'All furnishings safe, age-appropriate, and in good repair', weight: 2 },
-          { id: '5.6', text: 'Outdoor play space is secure, enclosed, and meets square metre requirements', weight: 3 }
+          { id: '5.6', text: 'Selection of toys available for free play in each room', weight: 1 },
+          { id: '5.7', text: 'All electronic/musical toys equipped with working batteries for children\'s use', weight: 1 },
+          { id: '5.8', text: 'Variety of dress-up/dressing clothes available for imaginative play', weight: 1 },
+          { id: '5.9', text: 'Puzzles sufficiently provided, visibly displayed, and all puzzle pieces complete and accounted for', weight: 1 },
+          { id: '5.10', text: 'Mirrors present in rooms that have dressing clothes available', weight: 1 },
+          { id: '5.11', text: 'Play centres complete with necessary accessories (handyman, kitchen stations, etc.)', weight: 1 },
+          { id: '5.12', text: 'Sensory activities and materials accessible to all children', weight: 2 },
+          { id: '5.13', text: 'Variety of manipulatives available for developmental play', weight: 1 },
+          { id: '5.14', text: 'Adequate supply of arts and craft materials available for creative activities', weight: 1 },
+          { id: '5.15', text: 'Arts and crafts continuously accessible for children throughout the day', weight: 1 }
         ]
       },
       {
         name: 'Section 6 - Health & Illness Management',
         items: [
-          { id: '6.1', text: 'Meals and snacks meet Canada Food Guide / Alberta Health Guide requirements', weight: 2 },
-          { id: '6.2', text: 'Menu posted in a visible location in each room', weight: 1 },
-          { id: '6.3', text: 'Infant food and bottles labeled with child\'s name', weight: 2 },
-          { id: '6.4', text: 'Children seated while eating or drinking', weight: 2 },
-          { id: '6.5', text: 'No drinking during nap/rest time', weight: 2 },
-          { id: '6.6', text: 'Sick children are separated and sent home promptly', weight: 3 },
-          { id: '6.7', text: 'Illness return policy enforced: child symptom-free 24 hrs before returning to care', weight: 3 },
-          { id: '6.8', text: 'Allergy lists current, posted in rooms, and shared with all staff', weight: 3 }
+          { id: '6.1', text: 'Infant food and bottles labeled with child\'s name', weight: 2 },
+          { id: '6.2', text: 'Children seated while eating or drinking', weight: 2 },
+          { id: '6.3', text: 'No drinking during nap/rest time', weight: 2 },
+          { id: '6.4', text: 'Sick children are separated and sent home promptly', weight: 3 },
+          { id: '6.5', text: 'Illness return policy enforced: child symptom-free 24 hrs before returning to care', weight: 3 },
+          { id: '6.6', text: 'Allergy lists current, posted in rooms, and shared with all staff', weight: 3 }
         ]
       },
       {
@@ -525,7 +699,7 @@ const AUDITS = {
           { id: '7.2', text: 'Medication stored in original, labeled container', weight: 3 },
           { id: '7.3', text: 'Medication log complete: child name, dose, time, staff initials', weight: 2 },
           { id: '7.4', text: 'Emergency medications (EpiPens, inhalers) stored safely and accessibly', weight: 3 },
-          { id: '7.5', text: '911 called immediately after any EpiPen administration', weight: 3 }
+          { id: '7.5', text: 'ASK TEACHER: \'What do you do immediately after administering an EpiPen?\' - Correct answer must include: (1) call 911 immediately, and (2) notify parents right away. Mark Compliant only if teacher states BOTH steps unprompted.', weight: 3 }
         ]
       },
       {
@@ -535,8 +709,10 @@ const AUDITS = {
           { id: '8.2', text: 'Prohibited practices not used: no physical punishment, restraint, or confinement as discipline', weight: 3 },
           { id: '8.3', text: 'Toddlers/infants not confined to high chairs, cribs, or swings beyond immediate care needs', weight: 2 },
           { id: '8.4', text: 'Active supervision maintained during all transitions (washroom runs, outdoor, hallways)', weight: 3 },
-          { id: '8.5', text: 'Vehicle transport: all children secured in age-appropriate car seats; written consent obtained', weight: 3 },
-          { id: '8.6', text: 'No children left unsupervised in vehicles at any time', weight: 3 }
+          { id: '8.5', text: 'Inspect room and equipment for sharp edges, broken parts, or hazardous substances', weight: 3 },
+          { id: '8.6', text: 'Music (if played) kept at a low volume to support effective supervision and communication', weight: 2 },
+          { id: '8.7', text: 'Sufficient natural or artificial lighting in place to ensure child safety and enable supervision', weight: 2 },
+          { id: '8.8', text: 'Blankets, stuffed toys, bumper pads, and loose objects removed from cribs of infants under 12 months', weight: 3 }
         ]
       },
       {
@@ -544,33 +720,9 @@ const AUDITS = {
         items: [
           { id: '9.1', text: 'Emergency contacts posted: 911, Poison Control, AHS', weight: 2 },
           { id: '9.2', text: 'Evacuation plan posted and visible from outside each room', weight: 2 },
-          { id: '9.3', text: 'Fire and health inspection certificates posted and current', weight: 1 },
-          { id: '9.4', text: 'Portable records accompany children on all outings and evacuations', weight: 3 },
-          { id: '9.5', text: 'No smoking or vaping on premises or during hours of care', weight: 3 },
-          { id: '9.6', text: 'Daily safety checks complete: chemicals secured, toys safe, hazards noted', weight: 2 }
-        ]
-      },
-      {
-        name: 'Section 10 - Posting & Documentation',
-        items: [
-          { id: '10.1', text: 'Childcare license posted in a visible location', weight: 2 },
-          { id: '10.2', text: 'Most recent licensing inspection report posted', weight: 1 },
-          { id: '10.3', text: 'Any exemptions or probationary license posted (if applicable)', weight: 1 },
-          { id: '10.4', text: 'Any variance notices posted (if applicable)', weight: 1 },
-          { id: '10.5', text: 'Policies shared with and accessible to parents and staff', weight: 1 }
-        ]
-      },
-      {
-        name: 'Section 11 - Playground Safety',
-        items: [
-          { id: '11.1', text: 'Daily playground safety inspection log completed before children access the area', weight: 3 },
-          { id: '11.2', text: 'Fall zones have minimum 1.8 m depth of engineered wood fiber, rubber mulch, or sand', weight: 3 },
-          { id: '11.3', text: 'All equipment openings checked: no entrapment hazards in the 9-23 cm dangerous zone', weight: 3 },
-          { id: '11.4', text: 'No strangulation hazards present: no drawstrings, loose ropes, or protrusions that catch clothing', weight: 3 },
-          { id: '11.5', text: 'Perimeter fence minimum 1.2 m high with childproof self-latching, outward-opening gate', weight: 3 },
-          { id: '11.6', text: 'Gate latch inaccessible to children; gate inspected and functional before each use', weight: 2 },
-          { id: '11.7', text: 'All equipment anchored securely; no exposed bolt ends, sharp edges, or splintered wood', weight: 3 },
-          { id: '11.8', text: 'Platforms above 75 cm have appropriate guardrails and protective barriers', weight: 2 }
+          { id: '9.3', text: 'Portable records accompany children on all outings and evacuations', weight: 3 },
+          { id: '9.4', text: 'No smoking or vaping on premises or during hours of care', weight: 3 },
+          { id: '9.5', text: 'Daily safety checks complete: chemicals secured, toys safe, hazards noted', weight: 2 }
         ]
       }
     ]
@@ -616,7 +768,8 @@ const AUDITS = {
           { id: 'C3.6', text: 'Waterproof, cleanable surface with safety belt (diaper pad) used', weight: 2 },
           { id: 'C3.7', text: 'Hands washed before and after each diaper change (staff and child)', weight: 3 },
           { id: 'C3.8', text: 'Diaper sanitizer solution is current (not expired)', weight: 2 },
-          { id: 'C3.9', text: 'Soiled diapers disposed in hands-free lidded bin; bin emptied daily', weight: 2 }
+          { id: 'C3.9', text: 'Soiled diapers disposed in hands-free lidded bin; bin emptied daily', weight: 2 },
+          { id: 'C3.10', text: 'Bedding properly stored: blankets not touching pillows; pillows stored in individual labeled plastic bags', weight: 2 }
         ]
       },
       {
@@ -635,46 +788,38 @@ const AUDITS = {
           { id: 'E5.2', text: 'Potties emptied into toilet and sanitized after each use', weight: 2 },
           { id: 'E5.3', text: 'Bathroom sinks clean; liquid soap and paper towels always stocked', weight: 2 },
           { id: 'E5.4', text: 'Toilet paper and waste bins always available in washrooms', weight: 1 },
-          { id: 'E5.5', text: 'Sufficient toilets/sinks per child ratios; step stools provided if needed', weight: 2 },
-          { id: 'E5.6', text: 'Bathrooms free of persistent odors; ventilation functioning correctly', weight: 1 }
+          { id: 'E5.5', text: 'Sufficient toilets/sinks per child ratios; step stools provided if needed', weight: 2 }
         ]
       },
       {
         name: 'Section F - Illness Response & Sick Child Protocols',
         items: [
-          { id: 'F6.1', text: 'Sick child policy posted and communicated to all families at enrollment', weight: 2 },
-          { id: 'F6.2', text: 'Ill children separated immediately upon symptom identification', weight: 3 },
-          { id: 'F6.3', text: 'Staff recognize exclusion symptoms: fever 38+C, vomiting, diarrhea, rash, eye discharge', weight: 3 },
-          { id: 'F6.4', text: 'Parents contacted promptly when child shows illness symptoms; pickup within 1 hour', weight: 3 },
-          { id: 'F6.5', text: 'Ill children supervised in a designated, comfortable waiting area', weight: 2 },
-          { id: 'F6.6', text: 'Return-to-care criteria enforced: child symptom-free 24 hours before return', weight: 3 },
-          { id: 'F6.7', text: 'Illness log maintained: child name, symptoms, date/time, parent notified, return date', weight: 2 },
-          { id: 'F6.8', text: 'AHS notified of reportable illnesses as required by Public Health Act', weight: 3 }
+          { id: 'F6.1', text: 'Ill children separated immediately upon symptom identification', weight: 3 },
+          { id: 'F6.2', text: 'Staff recognize exclusion symptoms: fever 38\u00B0C, vomiting, diarrhea, rash, eye discharge', weight: 3 },
+          { id: 'F6.3', text: 'Parents contacted promptly when child shows illness symptoms; pickup within 1 hour', weight: 3 },
+          { id: 'F6.4', text: 'Ill children supervised in a designated, comfortable waiting area', weight: 2 },
+          { id: 'F6.5', text: 'Return-to-care criteria enforced: child symptom-free 24 hours before return', weight: 3 },
+          { id: 'F6.6', text: 'Illness log maintained: child name, symptoms, date/time, parent notified, return date', weight: 2 },
+          { id: 'F6.7', text: 'AHS notified of reportable illnesses as required by Public Health Act', weight: 3 }
         ]
       },
       {
         name: 'Section G - Outbreak Response Protocol',
         items: [
-          { id: 'G7.1', text: 'Written outbreak response plan on file and accessible to all staff', weight: 2 },
-          { id: 'G7.2', text: 'AHS notified when 2+ children/staff show same symptoms within 72 hours', weight: 3 },
-          { id: 'G7.3', text: 'Enhanced cleaning and disinfection schedule implemented immediately during outbreak', weight: 3 },
-          { id: 'G7.4', text: 'Illness log updated with all affected children and staff during outbreak', weight: 2 },
-          { id: 'G7.5', text: 'Parents notified of suspected or confirmed outbreak via written notice', weight: 3 },
-          { id: 'G7.6', text: 'Symptomatic staff sent home; replacement arranged to maintain ratios', weight: 3 },
-          { id: 'G7.7', text: 'Outbreak closure or cohorting decision made in consultation with AHS inspector', weight: 3 }
+          { id: 'G7.1', text: 'Enhanced cleaning and disinfection schedule implemented immediately during outbreak', weight: 3 },
+          { id: 'G7.2', text: 'Illness log updated with all affected children and staff during outbreak', weight: 2 }
         ]
       },
       {
         name: 'Section H - Environmental Health',
         items: [
-          { id: 'H8.1', text: 'Rooms well ventilated: windows operable or HVAC functioning and regularly maintained', weight: 2 },
-          { id: 'H8.2', text: 'Hot water functional at all classroom and washroom sinks', weight: 1 },
-          { id: 'H8.3', text: 'Water temperature at children\'s sinks not scalding (max 49C / 120F)', weight: 3 },
-          { id: 'H8.4', text: 'No broken toys or materials with sharp or hazardous edges present in any room', weight: 2 },
-          { id: 'H8.5', text: 'Table wiping cloths labeled for table use only; soiled cloths stored in separate container', weight: 2 },
-          { id: 'H8.6', text: 'No visible mold, moisture damage, or pest evidence in any room or storage area', weight: 3 },
-          { id: 'H8.7', text: 'Humidifiers (if used) cleaned and disinfected weekly to prevent Legionella risk', weight: 2 },
-          { id: 'H8.8', text: 'Outdoor water play equipment drained and sanitized after each use', weight: 2 }
+          { id: 'H8.1', text: 'Hot water functional at all classroom and washroom sinks', weight: 1 },
+          { id: 'H8.2', text: 'Water temperature at children\'s sinks not scalding (max 49\u00B0C / 120\u00B0F)', weight: 3 },
+          { id: 'H8.3', text: 'No broken toys or materials with sharp or hazardous edges present in any room', weight: 2 },
+          { id: 'H8.4', text: 'Table wiping cloths labeled for table use only; soiled cloths stored in separate container', weight: 2 },
+          { id: 'H8.5', text: 'No visible mold, moisture damage, or pest evidence in any room or storage area', weight: 3 },
+          { id: 'H8.6', text: 'Humidifiers (if used) cleaned and disinfected weekly to prevent Legionella risk', weight: 2 },
+          { id: 'H8.7', text: 'Wall condition monitored: appropriate tape used on peeling wall areas; damage documented and reported for repair', weight: 1 }
         ]
       }
     ]
@@ -701,7 +846,8 @@ const AUDITS = {
           { id: 'K2.2', text: 'Dishes and utensils washed, rinsed, and sanitized; air-dried before storage', weight: 3 },
           { id: 'K2.3', text: 'Cupboards and utensil storage are clean and organized', weight: 1 },
           { id: 'K2.4', text: 'Oven, stove, and range hood are clean and grease-free', weight: 2 },
-          { id: 'K2.5', text: 'General kitchen area is clean and organized at all times', weight: 1 }
+          { id: 'K2.5', text: 'General kitchen area is clean and organized at all times', weight: 1 },
+          { id: 'K2.6', text: 'Refrigerator interior is clean: no spills, expired items, or odors; shelves wiped and organized', weight: 2 }
         ]
       },
       {
@@ -711,7 +857,8 @@ const AUDITS = {
           { id: 'K3.2', text: 'No sharing of utensils or cups between children', weight: 2 },
           { id: 'K3.3', text: 'Allergy lists current and posted in visible location in kitchen', weight: 3 },
           { id: 'K3.4', text: 'Allergen exposure prevention procedures followed during prep and serving', weight: 3 },
-          { id: 'K3.5', text: 'Individual allergen-safe meal prepared and labeled for children with food allergies', weight: 3 }
+          { id: 'K3.5', text: 'Individual allergen-safe meal prepared and labeled for children with food allergies', weight: 3 },
+          { id: 'K3.6', text: 'Is an accurate meal count recorded daily, tracking meals delivered per child and per classroom?', weight: 1 }
         ]
       },
       {
@@ -725,18 +872,18 @@ const AUDITS = {
           { id: 'K4.6', text: 'All necessary supplies stocked: gloves, paper towels, soap, sanitizer', weight: 2 },
           { id: 'K4.7', text: 'Current month menu posted in the kitchen and in each classroom', weight: 1 },
           { id: 'K4.8', text: 'Fire extinguisher inspected, tagged, and not expired', weight: 3 },
-          { id: 'K4.9', text: 'Meal count maintained: meals per day / per child / per classroom', weight: 1 }
+          { id: 'K4.9', text: 'Is all food properly stored? Fruit and dairy refrigerated; bread and baked goods sealed; dry goods (e.g., oatmeal, flour) in closed, labeled containers stored off the floor', weight: 3 }
         ]
       },
       {
         name: 'Section 5 - Temperature Control',
         items: [
-          { id: 'K5.1', text: 'Fridge temperature at 4C (40F) or colder; temperatures logged daily', weight: 3 },
-          { id: 'K5.2', text: 'Freezer temperature at -18C (0F) or colder; temperatures logged', weight: 3 },
+          { id: 'K5.1', text: 'Fridge temperature at 4\u00B0C (40\u00B0F) or colder; temperatures logged daily', weight: 3 },
+          { id: 'K5.2', text: 'Freezer temperature at -18\u00B0C (0\u00B0F) or colder; temperatures logged', weight: 3 },
           { id: 'K5.3', text: 'Thermometer calibrated and in use in the kitchen', weight: 2 },
           { id: 'K5.4', text: 'Hot and cold water available and functional at kitchen sink', weight: 1 },
           { id: 'K5.5', text: 'Expiration dates checked regularly; expired items removed immediately', weight: 2 },
-          { id: 'K5.6', text: 'Cooked food reaches safe internal temperatures (poultry 74C, ground meat 71C)', weight: 3 }
+          { id: 'K5.6', text: 'Cooked food reaches safe internal temperatures (poultry 74\u00B0C, ground meat 71\u00B0C)', weight: 3 }
         ]
       },
       {
@@ -760,15 +907,13 @@ const AUDITS = {
       {
         name: 'Section 1 - Bilingual Programming',
         items: [
-          { id: 'P1.1', text: 'Daily programming offered in both English and Spanish (or designated second language)', weight: 2 },
-          { id: 'P1.2', text: 'Second language integrated naturally into routines - not only formal instruction', weight: 2 },
-          { id: 'P1.3', text: 'Books, songs, and materials available in both program languages', weight: 1 },
-          { id: 'P1.4', text: 'Bilingual signage and labels visible throughout the learning environment', weight: 1 },
-          { id: 'P1.5', text: 'Staff demonstrate consistent use of target language during daily interactions', weight: 2 },
-          { id: 'P1.6', text: 'Cultural celebrations reflect language communities represented in the program', weight: 1 },
-          { id: 'P1.7', text: 'Family languages respected and incorporated into daily communication', weight: 1 },
-          { id: 'P1.8', text: 'Language immersion strategies documented in the program plan', weight: 2 },
-          { id: 'P1.9', text: 'Children\'s bilingual progress monitored using age-appropriate observation tools', weight: 2 }
+          { id: 'P1.1', text: 'Daily programming offered in both English and Spanish', weight: 2 },
+          { id: 'P1.2', text: 'Spanish integrated naturally into routines - not only formal instruction', weight: 2 },
+          { id: 'P1.3', text: 'Books, songs, and materials available in both English and Spanish', weight: 1 },
+          { id: 'P1.4', text: 'Bilingual (English/Spanish) signage and labels visible throughout the learning environment', weight: 1 },
+          { id: 'P1.5', text: 'Staff demonstrate consistent use of Spanish during daily interactions with children', weight: 2 },
+          { id: 'P1.6', text: 'Cultural celebrations reflect English- and Spanish-speaking communities in the program', weight: 1 },
+          { id: 'P1.7', text: 'Spanish actively used in daily communications with parents: verbal updates, app messages, conversations at drop-off and pick-up, and written notices', weight: 1 }
         ]
       },
       {
@@ -776,7 +921,7 @@ const AUDITS = {
         items: [
           { id: 'P2.1', text: 'Daily schedule balances child-initiated and educator-guided play', weight: 2 },
           { id: 'P2.2', text: 'Learning provocations and intentional invitations to play are set up daily', weight: 2 },
-          { id: 'P2.3', text: 'Outdoor play offered at least twice daily (weather permitting)', weight: 2 },
+          { id: 'P2.3', text: 'Outdoor play offered at least once a day (weather permitting)', weight: 2 },
           { id: 'P2.4', text: 'Block, dramatic, and sensory play areas available and in active use', weight: 1 },
           { id: 'P2.5', text: 'Activities reflect the Learn Through Play curriculum domains (Belonging, Play, Inquiry, etc.)', weight: 2 },
           { id: 'P2.6', text: 'Loose parts and open-ended materials present in learning areas', weight: 1 },
@@ -789,13 +934,8 @@ const AUDITS = {
       {
         name: 'Section 3 - Developmental Documentation',
         items: [
-          { id: 'P3.1', text: 'Portfolios or learning stories maintained for each child', weight: 2 },
-          { id: 'P3.2', text: 'Observations documented at least twice per month per child', weight: 2 },
-          { id: 'P3.3', text: 'ASQ or equivalent developmental screening completed at required intervals per age', weight: 3 },
-          { id: 'P3.4', text: 'IPP documentation current and co-developed with families for children with identified needs', weight: 3 },
-          { id: 'P3.5', text: 'Documentation shared with families regularly (at minimum once per semester)', weight: 2 },
-          { id: 'P3.6', text: 'Staff trained in observation and documentation practices', weight: 2 },
-          { id: 'P3.7', text: 'Developmental concerns referred to appropriate external supports with family consent', weight: 3 }
+          { id: 'P3.1', text: 'Child observations and feedback documented in a notebook to feed emergent curriculum - educators actively track each child\'s interests, needs, and evolving goals', weight: 2 },
+          { id: 'P3.2', text: 'Documentation shared with families regularly (at minimum once per semester)', weight: 2 }
         ]
       },
       {
@@ -813,36 +953,59 @@ const AUDITS = {
       {
         name: 'Section 5 - Inclusion & Environment Design',
         items: [
-          { id: 'P5.1', text: 'Physical environment accessible and adapted for children with mobility needs', weight: 2 },
-          { id: 'P5.2', text: 'Materials and activities modified to meet individual learning needs and IEP goals', weight: 2 },
-          { id: 'P5.3', text: 'Room arrangement promotes children\'s independence and child-led exploration', weight: 1 },
-          { id: 'P5.4', text: 'Sensory areas or calm corners available for self-regulation', weight: 1 },
-          { id: 'P5.5', text: 'Cultural diversity reflected in books, images, toys, and classroom materials', weight: 1 },
-          { id: 'P5.6', text: 'Gender-inclusive and stereotype-free materials used throughout the environment', weight: 1 },
-          { id: 'P5.7', text: 'PUF-funded children receive planned inclusive programming in integrated settings', weight: 3 }
+          { id: 'P5.1', text: 'Materials and activities modified to meet individual learning needs and IEP (Individualized Education Plan) goals', weight: 2 },
+          { id: 'P5.2', text: 'Room arrangement promotes children\'s independence and child-led exploration', weight: 1 },
+          { id: 'P5.3', text: 'Sensory areas or calm corners available for self-regulation', weight: 1 },
+          { id: 'P5.4', text: 'Cultural diversity reflected in books, images, toys, and classroom materials', weight: 1 },
+          { id: 'P5.5', text: 'Gender-inclusive and stereotype-free materials used throughout the environment', weight: 1 },
+          { id: 'P5.6', text: 'PUF-funded children receive planned inclusive programming in integrated settings', weight: 3 }
         ]
       },
       {
         name: 'Section 6 - Educator Professional Practice',
         items: [
-          { id: 'P6.1', text: 'Educators participate in at least one professional development activity per quarter', weight: 2 },
-          { id: 'P6.2', text: 'Reflective practice: educators review and adjust programming based on observed outcomes', weight: 2 },
-          { id: 'P6.3', text: 'Performance reviews completed for all staff at least annually', weight: 2 },
-          { id: 'P6.4', text: 'New staff receive formal onboarding and mentorship in the first 30 days', weight: 2 },
-          { id: 'P6.5', text: 'Educators demonstrate knowledge of Learn Through Play curriculum and inquiry-based learning', weight: 2 },
-          { id: 'P6.6', text: 'Staff meetings held monthly to review program quality and child outcomes', weight: 1 },
-          { id: 'P6.7', text: 'Child protection / mandatory reporting training current for all staff (every 3 years min.)', weight: 3 }
+          { id: 'P6.1', text: 'Reflective practice: educators review and adjust programming based on observed outcomes', weight: 2 },
+          { id: 'P6.2', text: 'Performance reviews completed for all staff at least annually', weight: 2 },
+          { id: 'P6.3', text: 'Educators demonstrate knowledge of Learn Through Play curriculum and inquiry-based learning', weight: 2 },
+          { id: 'P6.4', text: 'Staff meetings held monthly to review program quality and child outcomes', weight: 1 },
+          { id: 'P6.5', text: 'Child protection / mandatory reporting training current for all staff (every 3 years min.)', weight: 3 },
+          { id: 'P6.6', text: 'Actively contributes to team communication: raises classroom concerns, suggests improvements, and collaborates with colleagues to maximize time, resources, and program quality', weight: 2 }
         ]
       },
       {
         name: 'Section 7 - Family Engagement & Communication',
         items: [
-          { id: 'P7.1', text: 'Daily communication shared with families (verbal, app, or written - every day)', weight: 2 },
-          { id: 'P7.2', text: 'Parent orientation held for all new families within the first two weeks of enrollment', weight: 1 },
-          { id: 'P7.3', text: 'Formal parent-educator conferences held at least twice per year', weight: 2 },
-          { id: 'P7.4', text: 'Family handbook current, distributed to families, and signed-acknowledged on file', weight: 2 },
-          { id: 'P7.5', text: 'Family feedback mechanisms in place: surveys, suggestion box, formal complaint process', weight: 1 },
-          { id: 'P7.6', text: 'Community partnerships documented: speech language, OT, family resource programs, etc.', weight: 2 }
+          { id: 'P7.1', text: 'Daily communication shared with families (child activities, curriculum, etc. - every day)', weight: 2 },
+          { id: 'P7.2', text: 'Uses app to inform families about behaviour, incidents, and health-related issues in a timely manner', weight: 2 },
+          { id: 'P7.3', text: 'Interacts with families in a caring, respectful, and collaborative way', weight: 2 }
+        ]
+      }
+    ]
+  },
+  daily_compliance: {
+    label: 'Daily Compliance Monitoring',
+    sections: [
+      {
+        name: 'Section 1 - Child Attendance & Headcount Verification',
+        items: [
+          { id: '1.1', text: 'Child headcount: # of children physically present must match classroom attendance sheet', weight: 3 },
+          { id: '1.2', text: 'Child headcount: # of children physically present must match classroom attendance sheet', weight: 3 },
+          { id: '1.3', text: 'Child headcount: # of children physically present must match classroom attendance sheet', weight: 3 },
+          { id: '1.4', text: 'Child headcount: # of children physically present must match classroom attendance sheet', weight: 3 },
+          { id: '1.5', text: 'Child headcount: # of children physically present must match classroom attendance sheet', weight: 3 },
+          { id: '1.6', text: 'Child headcount: # of children physically present must match classroom attendance sheet', weight: 3 },
+          { id: '1.7', text: 'Child headcount: # of children physically present must match classroom attendance sheet', weight: 3 },
+          { id: '1.8', text: 'Child headcount: # of children physically present must match classroom attendance sheet', weight: 3 }
+        ]
+      },
+      {
+        name: 'Section 2 - Staff Headcount & Supervision Coverage',
+        items: [
+          { id: '2.1', text: 'Staff headcount: # of staff physically present must match posted daily schedule', weight: 3 },
+          { id: '2.2', text: 'Staff headcount: # of staff physically present must match posted daily schedule', weight: 3 },
+          { id: '2.3', text: 'Staff headcount: # of staff physically present must match posted daily schedule', weight: 3 },
+          { id: '2.4', text: 'Staff headcount: # of staff physically present must match posted daily schedule', weight: 3 },
+          { id: '2.5', text: 'Staff headcount: # of staff physically present must match posted daily schedule', weight: 3 }
         ]
       }
     ]
