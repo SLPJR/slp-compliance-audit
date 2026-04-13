@@ -1174,8 +1174,14 @@ function monthStart() {
 
 function formatDate(d) {
   if (!d) return '';
-  const dt = new Date(d);
+  const dt = parseLocalDate(d);
   return dt.toLocaleDateString('en-CA');
+}
+
+function parseLocalDate(s) {
+  if (s instanceof Date) return s;
+  const p = String(s).split('-');
+  return new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]));
 }
 
 function scoreColor(pct) {
@@ -2510,7 +2516,7 @@ async function loadDashboard() {
     if (filtered.length > 0) {
       const weekMap = {};
       filtered.forEach(a => {
-        const d = new Date(a.audit_date);
+        const d = parseLocalDate(a.audit_date);
         const day = d.getDay();
         const diff = day === 0 ? -6 : 1 - day; // Monday start
         const weekStart = new Date(d);
@@ -2592,7 +2598,7 @@ async function loadDashboard() {
       const allWeeks = new Set();
       const allTypes = new Set();
       filtered.forEach(a => {
-        const d = new Date(a.audit_date);
+        const d = parseLocalDate(a.audit_date);
         const day = d.getDay();
         const diff = day === 0 ? -6 : 1 - day;
         const weekStart = new Date(d);
