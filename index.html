@@ -1581,11 +1581,10 @@ function updateDailyStatus(itemId, secIdx) {
   const presentVal = document.getElementById('present_' + itemId).value;
   const statusEl = document.getElementById('status_' + itemId);
 
-  if (listVal === '' || presentVal === '') {
+  if (listVal === '' && presentVal === '') {
     statusEl.textContent = '--';
     statusEl.className = 'daily-status';
     currentAnswers[itemId].answer = '';
-    currentAnswers[itemId].comment = currentAnswers[itemId].comment || '';
   } else {
     const onList = parseInt(listVal) || 0;
     const present = parseInt(presentVal) || 0;
@@ -1602,7 +1601,7 @@ function updateDailyStatus(itemId, secIdx) {
 
   // Store extra data
   const timeStr = timeVal ? 'Time: ' + timeVal : '';
-  const countStr = (listVal !== '' || presentVal !== '') ? 'List: ' + (listVal || '0') + ' / Present: ' + (presentVal || '0') : '';
+  const countStr = 'List: ' + (listVal || '0') + ' / Present: ' + (presentVal || '0');
   const existingComment = document.querySelector('#q_' + CSS.escape(itemId) + ' textarea').value;
   const metaData = [timeStr, countStr].filter(Boolean).join(' | ');
   currentAnswers[itemId].dailyMeta = metaData;
