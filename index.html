@@ -428,9 +428,13 @@ input,select,textarea{font-family:inherit;font-size:1rem}
     </div>
     <button class="btn btn-primary btn-sm" onclick="loadAllAudits()">Filter</button>
   </div>
+  <div id="bulkDeleteBar" style="display:none;margin-bottom:8px">
+    <button class="btn btn-sm" style="background:var(--danger);color:#fff" onclick="bulkDeleteAudits()">Delete Selected (<span id="bulkDeleteCount">0</span>)</button>
+    <button class="btn btn-outline btn-sm" style="margin-left:4px" onclick="clearBulkSelect()">Cancel</button>
+  </div>
   <div class="card" style="overflow-x:auto">
     <table class="audit-table" id="allAuditsTable">
-      <thead><tr><th>Date</th><th>Type</th><th>Room</th><th>Inspector</th><th>Teacher</th><th>Score</th><th></th></tr></thead>
+      <thead><tr id="allAuditsHead"><th>Date</th><th>Type</th><th>Room</th><th>Inspector</th><th>Teacher</th><th>Score</th><th></th></tr></thead>
       <tbody id="allAuditsBody"></tbody>
     </table>
     <div id="allAuditsEmpty" style="text-align:center;padding:30px;color:var(--text-light);display:none">No audits found</div>
@@ -1173,6 +1177,47 @@ async function deleteAudit(auditId) {
   }
 }
 
+function toggleAllAuditCheckboxes(checked) {
+  document.querySelectorAll('.audit-check').forEach(cb => cb.checked = checked);
+  updateBulkCount();
+}
+
+function updateBulkCount() {
+  const checked = document.querySelectorAll('.audit-check:checked');
+  const bar = document.getElementById('bulkDeleteBar');
+  const count = document.getElementById('bulkDeleteCount');
+  count.textContent = checked.length;
+  bar.style.display = checked.length > 0 ? 'block' : 'none';
+}
+
+function clearBulkSelect() {
+  document.querySelectorAll('.audit-check').forEach(cb => cb.checked = false);
+  const headCheck = document.querySelector('.bulk-check-th input');
+  if (headCheck) headCheck.checked = false;
+  updateBulkCount();
+}
+
+async function bulkDeleteAudits() {
+  if (!isSuperAdmin()) { toast('Not authorized', 'error'); return; }
+  const checked = document.querySelectorAll('.audit-check:checked');
+  const ids = [...checked].map(cb => cb.value);
+  if (ids.length === 0) return;
+  if (!confirm('Are you sure you want to permanently delete ' + ids.length + ' audit(s)? This cannot be undone.')) return;
+  showSpinner();
+  try {
+    for (const id of ids) {
+      await sb.from('audit_answers').delete().eq('audit_id', id);
+      const { error } = await sb.from('audits').delete().eq('id', id);
+      if (error) throw error;
+    }
+    toast(ids.length + ' audit(s) deleted', 'success');
+    loadAllAudits();
+  } catch (err) {
+    hideSpinner();
+    toast('Error deleting audits: ' + err.message, 'error');
+  }
+}
+
 function showSpinner() {
   let s = document.getElementById('spinnerOverlay');
   if (!s) {
@@ -1892,10 +1937,27 @@ async function loadAllAudits() {
       empty.style.display = 'block';
     } else {
       empty.style.display = 'none';
+      const superAdmin = isSuperAdmin();
+      // Update header with checkbox for super admin
+      const headRow = document.getElementById('allAuditsHead');
+      if (superAdmin) {
+        if (!headRow.querySelector('.bulk-check-th')) {
+          const th = document.createElement('th');
+          th.className = 'bulk-check-th';
+          th.innerHTML = '<input type="checkbox" onchange="toggleAllAuditCheckboxes(this.checked)" title="Select all">';
+          headRow.insertBefore(th, headRow.firstChild);
+        }
+        document.getElementById('bulkDeleteBar').style.display = 'none';
+      } else {
+        const existingTh = headRow.querySelector('.bulk-check-th');
+        if (existingTh) existingTh.remove();
+        document.getElementById('bulkDeleteBar').style.display = 'none';
+      }
       data.forEach(a => {
         const tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
         tr.innerHTML =
+          (superAdmin ? '<td><input type="checkbox" class="audit-check" value="' + a.id + '" onclick="event.stopPropagation(); updateBulkCount()"></td>' : '') +
           '<td>' + formatDate(a.audit_date) + '</td>' +
           '<td>' + escHtml(auditLabel(a.audit_type)) + '</td>' +
           '<td>' + escHtml(a.room || '-') + '</td>' +
@@ -1904,7 +1966,6 @@ async function loadAllAudits() {
           '<td><span class="score-badge ' + scoreBadgeClass(a.total_pct) + '">' + (a.total_pct || 0) + '%</span></td>' +
           '<td>' +
             '<button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); detailAuditId=\'' + a.id + '\'; exportAuditZip();">Download</button>' +
-            (isSuperAdmin() ? ' <button class="btn btn-sm" style="background:var(--danger);color:#fff;margin-left:4px" onclick="event.stopPropagation(); deleteAudit(\'' + a.id + '\');">Delete</button>' : '') +
           '</td>';
         tr.onclick = () => navigate('detail/' + a.id);
         body.appendChild(tr);
