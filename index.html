@@ -453,6 +453,14 @@ input,select,textarea{font-family:inherit;font-size:1rem}
       <label>Room</label>
       <select id="dashRoom"><option value="">All Rooms</option></select>
     </div>
+    <div class="form-group">
+      <label>Teacher</label>
+      <select id="dashTeacher"><option value="">All Teachers</option></select>
+    </div>
+    <div class="form-group">
+      <label>Inspector</label>
+      <select id="dashInspector"><option value="">All Inspectors</option></select>
+    </div>
     <button class="btn btn-primary btn-sm" onclick="loadDashboard()">Apply</button>
   </div>
   <div class="summary-cards" id="dashSummary"></div>
@@ -460,7 +468,7 @@ input,select,textarea{font-family:inherit;font-size:1rem}
   <div class="chart-container"><h3>Average Score by Room</h3><canvas id="chartByRoom"></canvas></div>
   <div class="chart-container"><h3>Weekly Compliance Trend</h3><canvas id="chartTrend"></canvas></div>
   <div class="card"><h3 style="margin-bottom:8px;color:var(--primary)">Scores by Teacher</h3><table class="dash-table" id="teacherTable"><thead><tr><th>Teacher</th><th>Audit Type</th><th># Audits</th><th>Avg Score</th></tr></thead><tbody id="teacherBody"></tbody></table></div>
-  <div class="card"><h3 style="margin-bottom:8px;color:var(--primary)">Weekly Breakdown</h3><table class="dash-table" id="weeklyTable"><thead><tr><th>Week</th><th>Audit Type</th><th># Audits</th><th>Avg Score</th></tr></thead><tbody id="weeklyBody"></tbody></table></div>
+  <div class="chart-container"><h3>Weekly Breakdown</h3><canvas id="chartWeekly"></canvas></div>
   <div class="card"><h3 style="margin-bottom:8px;color:var(--primary)">Scores by Section</h3><table class="dash-table" id="sectionTable"><thead><tr><th>Section</th><th>Avg Score</th></tr></thead><tbody id="sectionBody"></tbody></table></div>
 </div>
 
@@ -2326,14 +2334,31 @@ function initDashboard() {
   if (!document.getElementById('dashTo').value) {
     document.getElementById('dashTo').value = todayStr();
   }
-  // Populate room dropdown from lookups
+  // Populate dropdowns from lookups
   const dashRoomEl = document.getElementById('dashRoom');
-  const currentVal = dashRoomEl.value;
+  const curRoom = dashRoomEl.value;
   dashRoomEl.innerHTML = '<option value="">All Rooms</option>';
   lookupClassrooms.forEach(c => {
     dashRoomEl.innerHTML += '<option value="' + escHtml(c.name) + '">' + escHtml(c.name) + '</option>';
   });
-  dashRoomEl.value = currentVal;
+  dashRoomEl.value = curRoom;
+
+  const dashTeacherEl = document.getElementById('dashTeacher');
+  const curTeacher = dashTeacherEl.value;
+  dashTeacherEl.innerHTML = '<option value="">All Teachers</option>';
+  lookupTeachers.forEach(t => {
+    dashTeacherEl.innerHTML += '<option value="' + escHtml(t.name) + '">' + escHtml(t.name) + '</option>';
+  });
+  dashTeacherEl.value = curTeacher;
+
+  const dashInspectorEl = document.getElementById('dashInspector');
+  const curInspector = dashInspectorEl.value;
+  dashInspectorEl.innerHTML = '<option value="">All Inspectors</option>';
+  lookupInspectors.forEach(i => {
+    dashInspectorEl.innerHTML += '<option value="' + escHtml(i.name) + '">' + escHtml(i.name) + '</option>';
+  });
+  dashInspectorEl.value = curInspector;
+
   loadDashboard();
 }
 
@@ -2351,10 +2376,17 @@ async function loadDashboard() {
     if (typeFilter) query = query.eq('audit_type', typeFilter);
     if (roomFilter) query = query.eq('room', roomFilter);
 
+    const teacherFilter = document.getElementById('dashTeacher').value;
+    const inspectorFilter = document.getElementById('dashInspector').value;
+    if (inspectorFilter) query = query.eq('inspector', inspectorFilter);
+
     const { data: audits, error } = await query;
     if (error) throw error;
 
     let filtered = audits || [];
+    if (teacherFilter) {
+      filtered = filtered.filter(a => a.teacher1 === teacherFilter || a.teacher2 === teacherFilter);
+    }
 
     // Load profiles for teacher names
     const { data: profiles } = await sb.from('profiles').select('id, full_name');
@@ -2473,14 +2505,16 @@ async function loadDashboard() {
       });
     }
 
-    // ---- Chart: Weekly Trend ----
+    // ---- Chart: Weekly Trend (Mon-Fri weeks) ----
     destroyChart('chartTrend');
     if (filtered.length > 0) {
       const weekMap = {};
       filtered.forEach(a => {
         const d = new Date(a.audit_date);
+        const day = d.getDay();
+        const diff = day === 0 ? -6 : 1 - day; // Monday start
         const weekStart = new Date(d);
-        weekStart.setDate(d.getDate() - d.getDay());
+        weekStart.setDate(d.getDate() + diff);
         const key = weekStart.toISOString().split('T')[0];
         if (!weekMap[key]) weekMap[key] = { sum: 0, count: 0 };
         weekMap[key].sum += (a.total_pct || 0);
@@ -2488,8 +2522,10 @@ async function loadDashboard() {
       });
       const sortedWeeks = Object.keys(weekMap).sort();
       const weekLabels = sortedWeeks.map(w => {
-        const d = new Date(w);
-        return d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+        const mon = new Date(w);
+        const fri = new Date(mon.getTime() + 4*86400000);
+        return mon.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) + ' - ' +
+          fri.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
       });
       const weekValues = sortedWeeks.map(w => Math.round(weekMap[w].sum / weekMap[w].count));
 
@@ -2549,41 +2585,56 @@ async function loadDashboard() {
         });
     }
 
-    // ---- Weekly Breakdown Table ----
-    const byWeekType = {};
-    filtered.forEach(a => {
-      const d = new Date(a.audit_date);
-      const weekStart = new Date(d);
-      weekStart.setDate(d.getDate() - d.getDay());
-      const weekKey = weekStart.toISOString().split('T')[0];
-      const aType = auditLabel(a.audit_type);
-      const key = weekKey + '||' + aType;
-      if (!byWeekType[key]) byWeekType[key] = { week: weekKey, type: aType, sum: 0, count: 0 };
-      byWeekType[key].sum += (a.total_pct || 0);
-      byWeekType[key].count++;
-    });
+    // ---- Weekly Breakdown Bar Chart (Mon-Fri, grouped by audit type) ----
+    destroyChart('chartWeekly');
+    if (filtered.length > 0) {
+      const byWeekType = {};
+      const allWeeks = new Set();
+      const allTypes = new Set();
+      filtered.forEach(a => {
+        const d = new Date(a.audit_date);
+        const day = d.getDay();
+        const diff = day === 0 ? -6 : 1 - day;
+        const weekStart = new Date(d);
+        weekStart.setDate(d.getDate() + diff);
+        const weekKey = weekStart.toISOString().split('T')[0];
+        const aType = auditLabel(a.audit_type);
+        allWeeks.add(weekKey);
+        allTypes.add(aType);
+        const key = weekKey + '||' + aType;
+        if (!byWeekType[key]) byWeekType[key] = { sum: 0, count: 0 };
+        byWeekType[key].sum += (a.total_pct || 0);
+        byWeekType[key].count++;
+      });
 
-    const weeklyBody = document.getElementById('weeklyBody');
-    weeklyBody.innerHTML = '';
-    const weekEntries = Object.values(byWeekType);
-    if (weekEntries.length === 0) {
-      weeklyBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-light)">No data</td></tr>';
-    } else {
-      weekEntries
-        .sort((a, b) => a.week.localeCompare(b.week) || a.type.localeCompare(b.type))
-        .forEach(d => {
-          const avg = Math.round(d.sum / d.count);
-          const weekDate = new Date(d.week);
-          const weekLabel = weekDate.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) + ' - ' +
-            new Date(weekDate.getTime() + 6*86400000).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
-          const tr = document.createElement('tr');
-          tr.innerHTML =
-            '<td>' + weekLabel + '</td>' +
-            '<td>' + escHtml(d.type) + '</td>' +
-            '<td>' + d.count + '</td>' +
-            '<td><span class="score-badge ' + scoreBadgeClass(avg) + '">' + avg + '%</span></td>';
-          weeklyBody.appendChild(tr);
-        });
+      const sortedWeeks = [...allWeeks].sort();
+      const weekLabels = sortedWeeks.map(w => {
+        const mon = new Date(w);
+        const fri = new Date(mon.getTime() + 4*86400000);
+        return mon.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) + ' - ' +
+          fri.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+      });
+
+      const chartColors = ['#1a5276', '#2980b9', '#27ae60', '#f39c12', '#e74c3c', '#8e44ad'];
+      const sortedTypes = [...allTypes].sort();
+      const datasets = sortedTypes.map((type, i) => ({
+        label: type,
+        data: sortedWeeks.map(w => {
+          const entry = byWeekType[w + '||' + type];
+          return entry ? Math.round(entry.sum / entry.count) : 0;
+        }),
+        backgroundColor: chartColors[i % chartColors.length]
+      }));
+
+      dashCharts.chartWeekly = new Chart(document.getElementById('chartWeekly'), {
+        type: 'bar',
+        data: { labels: weekLabels, datasets },
+        options: {
+          responsive: true,
+          scales: { y: { beginAtZero: true, max: 100 } },
+          plugins: { legend: { position: 'bottom' } }
+        }
+      });
     }
 
     hideSpinner();
