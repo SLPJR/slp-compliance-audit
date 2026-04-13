@@ -1152,6 +1152,27 @@ function toast(msg, type) {
   setTimeout(() => el.className = 'toast', 3000);
 }
 
+function isSuperAdmin() {
+  return currentUser && currentUser.email === 'smartlittlepeople@hotmail.com';
+}
+
+async function deleteAudit(auditId) {
+  if (!isSuperAdmin()) { toast('Not authorized', 'error'); return; }
+  if (!confirm('Are you sure you want to permanently delete this audit? This cannot be undone.')) return;
+  showSpinner();
+  try {
+    // Delete answers first (cascade should handle it, but be explicit)
+    await sb.from('audit_answers').delete().eq('audit_id', auditId);
+    const { error } = await sb.from('audits').delete().eq('id', auditId);
+    if (error) throw error;
+    toast('Audit deleted', 'success');
+    loadAllAudits();
+  } catch (err) {
+    hideSpinner();
+    toast('Error deleting audit: ' + err.message, 'error');
+  }
+}
+
 function showSpinner() {
   let s = document.getElementById('spinnerOverlay');
   if (!s) {
@@ -1881,7 +1902,10 @@ async function loadAllAudits() {
           '<td>' + escHtml(a.inspector || '-') + '</td>' +
           '<td>' + escHtml(a.teacher1 || '-') + '</td>' +
           '<td><span class="score-badge ' + scoreBadgeClass(a.total_pct) + '">' + (a.total_pct || 0) + '%</span></td>' +
-          '<td><button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); detailAuditId=\'' + a.id + '\'; exportAuditZip();">Download</button></td>';
+          '<td>' +
+            '<button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); detailAuditId=\'' + a.id + '\'; exportAuditZip();">Download</button>' +
+            (isSuperAdmin() ? ' <button class="btn btn-sm" style="background:var(--danger);color:#fff;margin-left:4px" onclick="event.stopPropagation(); deleteAudit(\'' + a.id + '\');">Delete</button>' : '') +
+          '</td>';
         tr.onclick = () => navigate('detail/' + a.id);
         body.appendChild(tr);
       });
