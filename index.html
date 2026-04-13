@@ -415,6 +415,10 @@ input,select,textarea{font-family:inherit;font-size:1rem}
       <select id="allFilterRoom"><option value="">All Rooms</option></select>
     </div>
     <div class="form-group">
+      <label>Inspector</label>
+      <select id="allFilterInspector"><option value="">All Inspectors</option></select>
+    </div>
+    <div class="form-group">
       <label>From</label>
       <input type="date" id="allFilterFrom">
     </div>
@@ -1508,13 +1512,13 @@ function createDailyCheckEl(item, sectionIdx) {
     '</div>' +
     '<div class="daily-check-grid">' +
       '<div class="form-group" style="margin:0"><label style="font-size:.75rem">Time of Check</label>' +
-        '<input type="time" class="daily-input" id="time_' + item.id + '" onchange="updateDailyStatus(\'' + safeId + '\',' + sectionIdx + ')">' +
+        '<input type="time" class="daily-input" id="time_' + item.id + '" oninput="updateDailyStatus(\'' + safeId + '\',' + sectionIdx + ')">' +
       '</div>' +
       '<div class="form-group" style="margin:0"><label style="font-size:.75rem"># on List</label>' +
-        '<input type="number" class="daily-input" id="list_' + item.id + '" min="0" placeholder="0" onchange="updateDailyStatus(\'' + safeId + '\',' + sectionIdx + ')">' +
+        '<input type="number" class="daily-input" id="list_' + item.id + '" min="0" placeholder="0" oninput="updateDailyStatus(\'' + safeId + '\',' + sectionIdx + ')">' +
       '</div>' +
       '<div class="form-group" style="margin:0"><label style="font-size:.75rem"># Present</label>' +
-        '<input type="number" class="daily-input" id="present_' + item.id + '" min="0" placeholder="0" onchange="updateDailyStatus(\'' + safeId + '\',' + sectionIdx + ')">' +
+        '<input type="number" class="daily-input" id="present_' + item.id + '" min="0" placeholder="0" oninput="updateDailyStatus(\'' + safeId + '\',' + sectionIdx + ')">' +
       '</div>' +
       '<div class="form-group" style="margin:0"><label style="font-size:.75rem">Status</label>' +
         '<div class="daily-status" id="status_' + item.id + '">--</div>' +
@@ -1822,6 +1826,14 @@ function initAllAudits() {
     roomEl.innerHTML += '<option value="' + escHtml(c.name) + '">' + escHtml(c.name) + '</option>';
   });
   roomEl.value = curVal;
+  // Populate inspector filter
+  const inspEl = document.getElementById('allFilterInspector');
+  const curInsp = inspEl.value;
+  inspEl.innerHTML = '<option value="">All Inspectors</option>';
+  lookupInspectors.forEach(i => {
+    inspEl.innerHTML += '<option value="' + escHtml(i.name) + '">' + escHtml(i.name) + '</option>';
+  });
+  inspEl.value = curInsp;
   if (!document.getElementById('allFilterFrom').value) {
     document.getElementById('allFilterFrom').value = monthStart();
   }
@@ -1842,6 +1854,8 @@ async function loadAllAudits() {
     let query = sb.from('audits').select('*').order('audit_date', { ascending: false });
     if (typeFilter) query = query.eq('audit_type', typeFilter);
     if (roomFilter) query = query.eq('room', roomFilter);
+    const inspectorFilter = document.getElementById('allFilterInspector').value;
+    if (inspectorFilter) query = query.eq('inspector', inspectorFilter);
     if (fromDate) query = query.gte('audit_date', fromDate);
     if (toDate) query = query.lte('audit_date', toDate);
 
