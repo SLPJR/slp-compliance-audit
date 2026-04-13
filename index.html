@@ -2563,9 +2563,21 @@ async function init() {
   showSpinner();
 
   try {
+    // Check if this is a password recovery redirect
+    const hashParams = window.location.hash;
+    const isRecovery = hashParams.includes('type=recovery') || hashParams.includes('type=magiclink');
+
     const { data: { session } } = await sb.auth.getSession();
     if (session && session.user) {
       currentUser = session.user;
+
+      if (isRecovery) {
+        hideSpinner();
+        document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+        document.getElementById('view-reset-password').style.display = 'block';
+        return;
+      }
+
       await loadProfile();
       await loadLookups();
       hideSpinner();
