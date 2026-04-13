@@ -424,7 +424,8 @@ input,select,textarea{font-family:inherit;font-size:1rem}
   <div class="chart-container"><h3>Average Score by Audit Type</h3><canvas id="chartByType"></canvas></div>
   <div class="chart-container"><h3>Average Score by Room</h3><canvas id="chartByRoom"></canvas></div>
   <div class="chart-container"><h3>Weekly Compliance Trend</h3><canvas id="chartTrend"></canvas></div>
-  <div class="card"><h3 style="margin-bottom:8px;color:var(--primary)">Scores by Teacher</h3><table class="dash-table" id="teacherTable"><thead><tr><th>Teacher</th><th># Audits</th><th>Avg Score</th></tr></thead><tbody id="teacherBody"></tbody></table></div>
+  <div class="card"><h3 style="margin-bottom:8px;color:var(--primary)">Scores by Teacher</h3><table class="dash-table" id="teacherTable"><thead><tr><th>Teacher</th><th>Audit Type</th><th># Audits</th><th>Avg Score</th></tr></thead><tbody id="teacherBody"></tbody></table></div>
+  <div class="card"><h3 style="margin-bottom:8px;color:var(--primary)">Weekly Breakdown</h3><table class="dash-table" id="weeklyTable"><thead><tr><th>Week</th><th>Audit Type</th><th># Audits</th><th>Avg Score</th></tr></thead><tbody id="weeklyBody"></tbody></table></div>
   <div class="card"><h3 style="margin-bottom:8px;color:var(--primary)">Scores by Section</h3><table class="dash-table" id="sectionTable"><thead><tr><th>Section</th><th>Avg Score</th></tr></thead><tbody id="sectionBody"></tbody></table></div>
 </div>
 
@@ -2415,36 +2416,74 @@ async function loadDashboard() {
       });
     }
 
-    // ---- Teacher Table ----
-    const byTeacher = {};
+    // ---- Teacher Table (by audit type) ----
+    const byTeacherType = {};
     filtered.forEach(a => {
-      if (a.teacher1) {
-        if (!byTeacher[a.teacher1]) byTeacher[a.teacher1] = { sum: 0, count: 0 };
-        byTeacher[a.teacher1].sum += (a.total_pct || 0);
-        byTeacher[a.teacher1].count++;
-      }
-      if (a.teacher2) {
-        if (!byTeacher[a.teacher2]) byTeacher[a.teacher2] = { sum: 0, count: 0 };
-        byTeacher[a.teacher2].sum += (a.total_pct || 0);
-        byTeacher[a.teacher2].count++;
-      }
+      const aType = auditLabel(a.audit_type);
+      const addTeacher = (name) => {
+        const key = name + '||' + aType;
+        if (!byTeacherType[key]) byTeacherType[key] = { teacher: name, type: aType, sum: 0, count: 0 };
+        byTeacherType[key].sum += (a.total_pct || 0);
+        byTeacherType[key].count++;
+      };
+      if (a.teacher1) addTeacher(a.teacher1);
+      if (a.teacher2) addTeacher(a.teacher2);
     });
 
     const teacherBody = document.getElementById('teacherBody');
     teacherBody.innerHTML = '';
-    if (Object.keys(byTeacher).length === 0) {
-      teacherBody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-light)">No data</td></tr>';
+    const teacherEntries = Object.values(byTeacherType);
+    if (teacherEntries.length === 0) {
+      teacherBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-light)">No data</td></tr>';
     } else {
-      Object.entries(byTeacher)
-        .sort((a, b) => b[1].count - a[1].count)
-        .forEach(([name, d]) => {
+      teacherEntries
+        .sort((a, b) => a.teacher.localeCompare(b.teacher) || a.type.localeCompare(b.type))
+        .forEach(d => {
           const avg = Math.round(d.sum / d.count);
           const tr = document.createElement('tr');
           tr.innerHTML =
-            '<td>' + escHtml(name) + '</td>' +
+            '<td>' + escHtml(d.teacher) + '</td>' +
+            '<td>' + escHtml(d.type) + '</td>' +
             '<td>' + d.count + '</td>' +
             '<td><span class="score-badge ' + scoreBadgeClass(avg) + '">' + avg + '%</span></td>';
           teacherBody.appendChild(tr);
+        });
+    }
+
+    // ---- Weekly Breakdown Table ----
+    const byWeekType = {};
+    filtered.forEach(a => {
+      const d = new Date(a.audit_date);
+      const weekStart = new Date(d);
+      weekStart.setDate(d.getDate() - d.getDay());
+      const weekKey = weekStart.toISOString().split('T')[0];
+      const aType = auditLabel(a.audit_type);
+      const key = weekKey + '||' + aType;
+      if (!byWeekType[key]) byWeekType[key] = { week: weekKey, type: aType, sum: 0, count: 0 };
+      byWeekType[key].sum += (a.total_pct || 0);
+      byWeekType[key].count++;
+    });
+
+    const weeklyBody = document.getElementById('weeklyBody');
+    weeklyBody.innerHTML = '';
+    const weekEntries = Object.values(byWeekType);
+    if (weekEntries.length === 0) {
+      weeklyBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-light)">No data</td></tr>';
+    } else {
+      weekEntries
+        .sort((a, b) => a.week.localeCompare(b.week) || a.type.localeCompare(b.type))
+        .forEach(d => {
+          const avg = Math.round(d.sum / d.count);
+          const weekDate = new Date(d.week);
+          const weekLabel = weekDate.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) + ' - ' +
+            new Date(weekDate.getTime() + 6*86400000).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
+          const tr = document.createElement('tr');
+          tr.innerHTML =
+            '<td>' + weekLabel + '</td>' +
+            '<td>' + escHtml(d.type) + '</td>' +
+            '<td>' + d.count + '</td>' +
+            '<td><span class="score-badge ' + scoreBadgeClass(avg) + '">' + avg + '%</span></td>';
+          weeklyBody.appendChild(tr);
         });
     }
 
