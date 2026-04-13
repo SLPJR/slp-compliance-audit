@@ -1592,6 +1592,8 @@ function createDailyCheckEl(item, sectionIdx) {
         '<div class="daily-status" id="status_' + item.id + '">--</div>' +
       '</div>' +
     '</div>' +
+    '<div style="margin-top:6px"><button class="photo-btn" onclick="openPhotoCapture(\'' + safeId + '\')">&#128247; Photo</button></div>' +
+    '<div class="q-photos" id="photos_' + item.id + '"></div>' +
     '<div class="q-comment"><textarea placeholder="Notes / Action Required..." onchange="setComment(\'' + safeId + '\', this.value)"></textarea></div>';
 
   return div;
