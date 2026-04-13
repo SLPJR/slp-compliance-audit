@@ -191,6 +191,13 @@ input,select,textarea{font-family:inherit;font-size:1rem}
 
 /* Select styling to match inputs */
 .form-group select{appearance:auto;background:var(--white)}
+
+.daily-check-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin:8px 0}
+.daily-input{width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:.9rem}
+.daily-status{padding:8px;border-radius:6px;text-align:center;font-weight:700;font-size:.85rem;background:#f0f0f0;color:#666}
+.daily-compliant{background:#d4edda;color:#155724}
+.daily-non-compliant{background:#f8d7da;color:#721c24}
+@media(max-width:600px){.daily-check-grid{grid-template-columns:1fr 1fr;}}
 </style>
 </head>
 <body>
@@ -1345,9 +1352,11 @@ function initAuditForm(type) {
 
   // Hide room/teacher fields for facility-wide audits
   const isFacility = (type === 'admin_facility');
+  const isDaily = (type === 'daily_compliance');
   document.getElementById('fieldRoom').style.display = isFacility ? 'none' : '';
   document.getElementById('fieldTeacher1').style.display = isFacility ? 'none' : '';
-  document.getElementById('fieldTeacher2').style.display = isFacility ? 'none' : '';
+  document.getElementById('fieldTeacher1').querySelector('label').textContent = isDaily ? 'Teacher / Staff on Duty' : 'Teacher 1';
+  document.getElementById('fieldTeacher2').style.display = (isFacility || isDaily) ? 'none' : '';
 
   // Populate dropdowns from lookup data
   populateSelect('auditRoom', lookupClassrooms);
@@ -1375,7 +1384,11 @@ function initAuditForm(type) {
 
     section.items.forEach(item => {
       currentAnswers[item.id] = { answer: '', comment: '', weight: item.weight };
-      body.appendChild(createQuestionEl(item, si));
+      if (type === 'daily_compliance') {
+        body.appendChild(createDailyCheckEl(item, si));
+      } else {
+        body.appendChild(createQuestionEl(item, si));
+      }
     });
 
     secEl.appendChild(header);
@@ -1384,6 +1397,38 @@ function initAuditForm(type) {
   });
 
   updateScores();
+}
+
+function createDailyCheckEl(item, sectionIdx) {
+  const div = document.createElement('div');
+  div.className = 'q-item';
+  div.id = 'q_' + item.id;
+
+  const safeId = item.id.replace(/'/g, "\\'");
+
+  div.innerHTML =
+    '<div class="q-top">' +
+      '<span class="q-number">' + escHtml(item.id) + '</span>' +
+      '<span class="q-text">' + escHtml(item.text) + '</span>' +
+      '<span class="q-weight w' + item.weight + '">' + item.weight + '</span>' +
+    '</div>' +
+    '<div class="daily-check-grid">' +
+      '<div class="form-group" style="margin:0"><label style="font-size:.75rem">Time of Check</label>' +
+        '<input type="time" class="daily-input" id="time_' + item.id + '" onchange="updateDailyStatus(\'' + safeId + '\',' + sectionIdx + ')">' +
+      '</div>' +
+      '<div class="form-group" style="margin:0"><label style="font-size:.75rem"># on List</label>' +
+        '<input type="number" class="daily-input" id="list_' + item.id + '" min="0" placeholder="0" onchange="updateDailyStatus(\'' + safeId + '\',' + sectionIdx + ')">' +
+      '</div>' +
+      '<div class="form-group" style="margin:0"><label style="font-size:.75rem"># Present</label>' +
+        '<input type="number" class="daily-input" id="present_' + item.id + '" min="0" placeholder="0" onchange="updateDailyStatus(\'' + safeId + '\',' + sectionIdx + ')">' +
+      '</div>' +
+      '<div class="form-group" style="margin:0"><label style="font-size:.75rem">Status</label>' +
+        '<div class="daily-status" id="status_' + item.id + '">--</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="q-comment"><textarea placeholder="Notes / Action Required..." onchange="setComment(\'' + safeId + '\', this.value)"></textarea></div>';
+
+  return div;
 }
 
 function createQuestionEl(item, sectionIdx) {
@@ -1430,6 +1475,44 @@ function setAnswer(itemId, val, secIdx) {
 
 function setComment(itemId, val) {
   if (currentAnswers[itemId]) currentAnswers[itemId].comment = val;
+}
+
+function updateDailyStatus(itemId, secIdx) {
+  const timeVal = document.getElementById('time_' + itemId).value;
+  const listVal = document.getElementById('list_' + itemId).value;
+  const presentVal = document.getElementById('present_' + itemId).value;
+  const statusEl = document.getElementById('status_' + itemId);
+
+  if (listVal === '' || presentVal === '') {
+    statusEl.textContent = '--';
+    statusEl.className = 'daily-status';
+    currentAnswers[itemId].answer = '';
+    currentAnswers[itemId].comment = currentAnswers[itemId].comment || '';
+  } else {
+    const onList = parseInt(listVal) || 0;
+    const present = parseInt(presentVal) || 0;
+    if (onList === present) {
+      statusEl.textContent = 'Compliant';
+      statusEl.className = 'daily-status daily-compliant';
+      currentAnswers[itemId].answer = 'compliant';
+    } else {
+      statusEl.textContent = 'Non-Compliant';
+      statusEl.className = 'daily-status daily-non-compliant';
+      currentAnswers[itemId].answer = 'non-compliant';
+    }
+  }
+
+  // Store extra data
+  const timeStr = timeVal ? 'Time: ' + timeVal : '';
+  const countStr = (listVal !== '' || presentVal !== '') ? 'List: ' + (listVal || '0') + ' / Present: ' + (presentVal || '0') : '';
+  const existingComment = document.querySelector('#q_' + CSS.escape(itemId) + ' textarea').value;
+  const metaData = [timeStr, countStr].filter(Boolean).join(' | ');
+  currentAnswers[itemId].dailyMeta = metaData;
+  currentAnswers[itemId].timeCheck = timeVal;
+  currentAnswers[itemId].onList = listVal;
+  currentAnswers[itemId].present = presentVal;
+
+  updateScores();
 }
 
 function updateScores() {
@@ -1592,7 +1675,7 @@ async function submitAudit() {
           weight: a.weight,
           points: points,
           max_points: maxP,
-          comment: a.comment || ''
+          comment: a.dailyMeta ? (a.dailyMeta + (a.comment ? ' | ' + a.comment : '')) : (a.comment || '')
         });
       });
     });
