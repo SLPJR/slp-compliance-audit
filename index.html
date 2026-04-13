@@ -1919,6 +1919,103 @@ async function exportAuditZip() {
     if (!fmtWs['!merges']) fmtWs['!merges'] = [];
     fmtWs['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 6 } });
 
+    // === Build Summary Dashboard sheet (inserted first) ===
+    const sumRows = [];
+    const sumTitleStyle = { font: { bold: true, sz: 14, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '1A5276' } }, alignment: { horizontal: 'left' } };
+    const sumHdrStyle = { font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '2C3E50' } }, border: thinBorder(), alignment: { horizontal: 'center', wrapText: true } };
+    const sumRowStyle = { font: { sz: 10 }, border: thinBorder() };
+    const sumRowCenter = { font: { sz: 10 }, border: thinBorder(), alignment: { horizontal: 'center' } };
+    const sumTotalStyle = { font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '1A5276' } }, border: thinBorder(), alignment: { horizontal: 'center' } };
+    const sumTotalLabel = { font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '1A5276' } }, border: thinBorder() };
+    const sumInfoLabel = { font: { bold: true, sz: 10 }, fill: { fgColor: { rgb: 'F2F3F4' } }, border: thinBorder() };
+    const sumInfoVal = { font: { sz: 10 }, border: thinBorder() };
+
+    // Title
+    sumRows.push([
+      { v: 'Smart Little People  |  Compliance Audit Dashboard', s: sumTitleStyle },
+      { v: '', s: sumTitleStyle }, { v: '', s: sumTitleStyle }, { v: '', s: sumTitleStyle }, { v: '', s: sumTitleStyle }
+    ]);
+    // Blank row
+    sumRows.push([{ v: '', s: {} }]);
+    // Audit info
+    sumRows.push([
+      { v: 'Audit Type:', s: sumInfoLabel }, { v: auditDef ? auditDef.label : audit.audit_type, s: sumInfoVal },
+      { v: '', s: {} }, { v: 'Date:', s: sumInfoLabel }, { v: audit.audit_date, s: sumInfoVal }
+    ]);
+    sumRows.push([
+      { v: 'Inspector:', s: sumInfoLabel }, { v: audit.inspector, s: sumInfoVal },
+      { v: '', s: {} }, { v: 'Room:', s: sumInfoLabel }, { v: audit.room || 'N/A', s: sumInfoVal }
+    ]);
+    sumRows.push([
+      { v: 'Teacher 1:', s: sumInfoLabel }, { v: audit.teacher1 || 'N/A', s: sumInfoVal },
+      { v: '', s: {} }, { v: 'Teacher 2:', s: sumInfoLabel }, { v: audit.teacher2 || 'N/A', s: sumInfoVal }
+    ]);
+    // Blank row
+    sumRows.push([{ v: '', s: {} }]);
+    // Weight guide
+    sumRows.push([
+      { v: 'Weight Guide:  1 = Standard (Low penalty risk)  |  2 = Important (Medium risk)  |  3 = Critical (High risk)', s: { font: { italic: true, sz: 9, color: { rgb: '7F8C8D' } } } }
+    ]);
+    // Blank row
+    sumRows.push([{ v: '', s: {} }]);
+    // Section header
+    sumRows.push([
+      { v: 'AUDIT SCORE SUMMARY', s: sumTitleStyle },
+      { v: '', s: sumTitleStyle }, { v: '', s: sumTitleStyle }, { v: '', s: sumTitleStyle }, { v: '', s: sumTitleStyle }
+    ]);
+    // Column headers
+    sumRows.push([
+      { v: 'Audit Type', s: sumHdrStyle },
+      { v: 'Section', s: sumHdrStyle },
+      { v: 'Achieved', s: sumHdrStyle },
+      { v: 'Max', s: sumHdrStyle },
+      { v: 'Score %', s: sumHdrStyle }
+    ]);
+
+    // Section rows
+    if (auditDef) {
+      let isFirstSection = true;
+      auditDef.sections.forEach(section => {
+        let secAch = 0, secMx = 0;
+        section.items.forEach(item => {
+          const ans = answerMap[item.id];
+          if (!ans) { secMx += item.weight; return; }
+          if (ans.answer === 'compliant') { secAch += item.weight; secMx += item.weight; }
+          else if (ans.answer === 'non-compliant') { secMx += item.weight; }
+          else if (ans.answer !== 'na') { secMx += item.weight; }
+        });
+        const secPct = secMx > 0 ? ((secAch / secMx) * 100).toFixed(1) + '%' : '0.0%';
+        const pctColor = secMx > 0 && (secAch / secMx) >= 0.8 ? '155724' : secMx > 0 && (secAch / secMx) >= 0.5 ? '856404' : '721C24';
+        const pctStyle = { font: { bold: true, sz: 10, color: { rgb: pctColor } }, border: thinBorder(), alignment: { horizontal: 'center' } };
+        sumRows.push([
+          { v: isFirstSection ? auditDef.label : '', s: sumRowStyle },
+          { v: section.name.replace(/^Section [A-Z0-9]+ - /, ''), s: sumRowStyle },
+          { v: secAch, s: sumRowCenter },
+          { v: secMx, s: sumRowCenter },
+          { v: secPct, s: pctStyle }
+        ]);
+        isFirstSection = false;
+      });
+    }
+
+    // Total row
+    const dashPct = audit.total_max > 0 ? ((audit.total_achieved / audit.total_max) * 100).toFixed(1) + '%' : '0.0%';
+    sumRows.push([
+      { v: (auditDef ? auditDef.label : audit.audit_type) + '  - TOTAL', s: sumTotalLabel },
+      { v: '', s: sumTotalStyle },
+      { v: audit.total_achieved, s: sumTotalStyle },
+      { v: audit.total_max, s: sumTotalStyle },
+      { v: dashPct, s: sumTotalStyle }
+    ]);
+
+    const sumWs = XLSX.utils.aoa_to_sheet(sumRows);
+    sumWs['!cols'] = [{ wch: 28 }, { wch: 45 }, { wch: 10 }, { wch: 8 }, { wch: 10 }];
+    if (!sumWs['!merges']) sumWs['!merges'] = [];
+    sumWs['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } });
+    sumWs['!merges'].push({ s: { r: 8, c: 0 }, e: { r: 8, c: 4 } });
+    XLSX.utils.book_append_sheet(fmtWb, sumWs, 'Summary Dashboard');
+
+    // Add detail sheet after summary
     XLSX.utils.book_append_sheet(fmtWb, fmtWs, auditDef ? auditDef.label : 'Audit');
     const fmtXlsxData = XLSX.write(fmtWb, { bookType: 'xlsx', type: 'array' });
 
