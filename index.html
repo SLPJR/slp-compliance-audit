@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>SLP Compliance Audit</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
@@ -1786,9 +1786,144 @@ async function exportAuditZip() {
 
     const auditDef = AUDITS[audit.audit_type];
     const typeLabel = auditDef ? auditDef.label.replace(/[^a-zA-Z0-9]/g, '_') : audit.audit_type;
+    const fileName = typeLabel + '_' + formatDate(audit.audit_date) + '_' + (audit.room || 'Facility').replace(/[^a-zA-Z0-9]/g, '_');
 
-    // Build Excel data
-    const wsData = [['Item ID', 'Section', 'Question', 'Weight', 'Answer', 'Points', 'Max Points', 'Comment']];
+    // === Build FORMATTED Excel ===
+    const fmtWb = XLSX.utils.book_new();
+    const fmtRows = [];
+
+    // Styles
+    const titleStyle = { font: { bold: true, sz: 14, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '1A5276' } }, alignment: { horizontal: 'left' } };
+    const headerStyle = { font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '2C3E50' } }, border: thinBorder(), alignment: { horizontal: 'center', wrapText: true } };
+    const sectionStyle = { font: { bold: true, sz: 11, color: { rgb: '1A5276' } }, fill: { fgColor: { rgb: 'D6EAF8' } }, border: thinBorder() };
+    const sectionScoreStyle = { font: { bold: true, sz: 10 }, fill: { fgColor: { rgb: 'E8F6F3' } }, border: thinBorder() };
+    const itemStyle = { font: { sz: 10 }, border: thinBorder(), alignment: { wrapText: true } };
+    const itemCenterStyle = { font: { sz: 10 }, border: thinBorder(), alignment: { horizontal: 'center' } };
+    const compliantStyle = { font: { sz: 10, color: { rgb: '155724' } }, fill: { fgColor: { rgb: 'D4EDDA' } }, border: thinBorder(), alignment: { horizontal: 'center' } };
+    const nonCompliantStyle = { font: { sz: 10, color: { rgb: '721C24' } }, fill: { fgColor: { rgb: 'F8D7DA' } }, border: thinBorder(), alignment: { horizontal: 'center' } };
+    const naStyle = { font: { sz: 10, color: { rgb: '856404' } }, fill: { fgColor: { rgb: 'FFF3CD' } }, border: thinBorder(), alignment: { horizontal: 'center' } };
+    const totalStyle = { font: { bold: true, sz: 12, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '1A5276' } }, border: thinBorder(), alignment: { horizontal: 'center' } };
+    const infoLabelStyle = { font: { bold: true, sz: 10 }, fill: { fgColor: { rgb: 'F2F3F4' } }, border: thinBorder() };
+    const infoValueStyle = { font: { sz: 10 }, border: thinBorder() };
+
+    // Title row
+    fmtRows.push([
+      { v: 'Smart Little People  |  ' + (auditDef ? auditDef.label : audit.audit_type) + ' Audit', s: titleStyle },
+      { v: '', s: titleStyle }, { v: '', s: titleStyle }, { v: '', s: titleStyle },
+      { v: '', s: titleStyle }, { v: '', s: titleStyle }, { v: '', s: titleStyle }
+    ]);
+
+    // Info rows
+    fmtRows.push([
+      { v: 'Date:', s: infoLabelStyle }, { v: audit.audit_date, s: infoValueStyle }, { v: '', s: {} },
+      { v: '', s: {} },
+      { v: 'Room / Classroom:', s: infoLabelStyle }, { v: audit.room || 'N/A', s: infoValueStyle }, { v: '', s: {} }
+    ]);
+    fmtRows.push([
+      { v: 'Inspector:', s: infoLabelStyle }, { v: audit.inspector, s: infoValueStyle }, { v: '', s: {} },
+      { v: '', s: {} },
+      { v: 'Teacher 1:', s: infoLabelStyle }, { v: audit.teacher1 || 'N/A', s: infoValueStyle }, { v: '', s: {} }
+    ]);
+    fmtRows.push([
+      { v: 'Teacher 2:', s: infoLabelStyle }, { v: audit.teacher2 || 'N/A', s: infoValueStyle },
+      { v: '', s: {} }, { v: '', s: {} }, { v: '', s: {} }, { v: '', s: {} }, { v: '', s: {} }
+    ]);
+
+    // Weight guide
+    fmtRows.push([
+      { v: 'Weight:  1 = Standard (Low risk)  |  2 = Important (Medium risk)  |  3 = Critical (High risk)', s: { font: { italic: true, sz: 9, color: { rgb: '7F8C8D' } } } },
+      { v: '', s: {} }, { v: '', s: {} }, { v: '', s: {} }, { v: '', s: {} }, { v: '', s: {} }, { v: '', s: {} }
+    ]);
+
+    // Column headers
+    fmtRows.push([
+      { v: '#', s: headerStyle },
+      { v: 'Compliance Area', s: headerStyle },
+      { v: 'Wt', s: headerStyle },
+      { v: 'Answer', s: headerStyle },
+      { v: 'Pts', s: headerStyle },
+      { v: 'Max', s: headerStyle },
+      { v: 'Comments / Action Required', s: headerStyle }
+    ]);
+
+    // Sections and items
+    const answerMap = {};
+    answers.forEach(a => { answerMap[a.item_id] = a; });
+
+    if (auditDef) {
+      auditDef.sections.forEach(section => {
+        // Section header row
+        fmtRows.push([
+          { v: section.name, s: sectionStyle },
+          { v: '', s: sectionStyle }, { v: '', s: sectionStyle }, { v: '', s: sectionStyle },
+          { v: '', s: sectionStyle }, { v: '', s: sectionStyle }, { v: '', s: sectionStyle }
+        ]);
+
+        let secAchieved = 0, secMax = 0;
+
+        section.items.forEach(item => {
+          const ans = answerMap[item.id];
+          const answer = ans ? ans.answer : '';
+          const pts = ans ? ans.points : 0;
+          const maxPts = ans ? ans.max_points : item.weight;
+          const comment = ans ? (ans.comment || '') : '';
+
+          if (answer === 'compliant') { secAchieved += item.weight; secMax += item.weight; }
+          else if (answer === 'non-compliant') { secMax += item.weight; }
+          else if (answer !== 'na') { secMax += item.weight; }
+
+          const ansStyle = answer === 'compliant' ? compliantStyle :
+                          answer === 'non-compliant' ? nonCompliantStyle :
+                          answer === 'na' ? naStyle : itemCenterStyle;
+
+          fmtRows.push([
+            { v: item.id, s: itemCenterStyle },
+            { v: item.text, s: itemStyle },
+            { v: item.weight, s: itemCenterStyle },
+            { v: answer ? answer.charAt(0).toUpperCase() + answer.slice(1) : '', s: ansStyle },
+            { v: pts, s: itemCenterStyle },
+            { v: maxPts, s: itemCenterStyle },
+            { v: comment, s: itemStyle }
+          ]);
+        });
+
+        // Section score row
+        const secPct = secMax > 0 ? ((secAchieved / secMax) * 100).toFixed(1) + '%' : '0.0%';
+        fmtRows.push([
+          { v: 'Section Score', s: sectionScoreStyle },
+          { v: '', s: sectionScoreStyle }, { v: '', s: sectionScoreStyle }, { v: '', s: sectionScoreStyle },
+          { v: secAchieved, s: { ...sectionScoreStyle, alignment: { horizontal: 'center' } } },
+          { v: secMax, s: { ...sectionScoreStyle, alignment: { horizontal: 'center' } } },
+          { v: secPct, s: { ...sectionScoreStyle, alignment: { horizontal: 'center' } } }
+        ]);
+
+        // Empty row between sections
+        fmtRows.push([{ v: '', s: {} }, { v: '', s: {} }, { v: '', s: {} }, { v: '', s: {} }, { v: '', s: {} }, { v: '', s: {} }, { v: '', s: {} }]);
+      });
+    }
+
+    // Overall score
+    const overallPct = audit.total_max > 0 ? ((audit.total_achieved / audit.total_max) * 100).toFixed(1) + '%' : '0.0%';
+    fmtRows.push([
+      { v: 'OVERALL AUDIT SCORE', s: totalStyle },
+      { v: '', s: totalStyle }, { v: '', s: totalStyle }, { v: '', s: totalStyle },
+      { v: audit.total_achieved, s: totalStyle },
+      { v: audit.total_max, s: totalStyle },
+      { v: overallPct, s: totalStyle }
+    ]);
+
+    const fmtWs = XLSX.utils.aoa_to_sheet(fmtRows);
+    fmtWs['!cols'] = [{ wch: 8 }, { wch: 75 }, { wch: 5 }, { wch: 16 }, { wch: 6 }, { wch: 6 }, { wch: 45 }];
+
+    // Merge title row
+    if (!fmtWs['!merges']) fmtWs['!merges'] = [];
+    fmtWs['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 6 } });
+
+    XLSX.utils.book_append_sheet(fmtWb, fmtWs, auditDef ? auditDef.label : 'Audit');
+    const fmtXlsxData = XLSX.write(fmtWb, { bookType: 'xlsx', type: 'array' });
+
+    // === Build PLAIN DATA Excel (original) ===
+    const plainWsData = [['Item ID', 'Section', 'Question', 'Weight', 'Answer', 'Points', 'Max Points', 'Comment']];
     answers.forEach(ans => {
       let itemText = ans.item_id;
       if (auditDef) {
@@ -1797,30 +1932,27 @@ async function exportAuditZip() {
           if (found) { itemText = found.text; break; }
         }
       }
-      wsData.push([ans.item_id, ans.section_name, itemText, ans.weight, ans.answer, ans.points, ans.max_points, ans.comment || '']);
+      plainWsData.push([ans.item_id, ans.section_name, itemText, ans.weight, ans.answer, ans.points, ans.max_points, ans.comment || '']);
     });
+    plainWsData.push([]);
+    plainWsData.push(['TOTAL', '', '', '', '', audit.total_achieved, audit.total_max, audit.total_pct + '%']);
+    plainWsData.push([]);
+    plainWsData.push(['Audit Date', audit.audit_date]);
+    plainWsData.push(['Room', audit.room]);
+    plainWsData.push(['Inspector', audit.inspector]);
+    plainWsData.push(['Teacher 1', audit.teacher1]);
+    plainWsData.push(['Teacher 2', audit.teacher2]);
 
-    // Summary rows
-    wsData.push([]);
-    wsData.push(['TOTAL', '', '', '', '', audit.total_achieved, audit.total_max, audit.total_pct + '%']);
-    wsData.push([]);
-    wsData.push(['Audit Date', audit.audit_date]);
-    wsData.push(['Room', audit.room]);
-    wsData.push(['Inspector', audit.inspector]);
-    wsData.push(['Teacher 1', audit.teacher1]);
-    wsData.push(['Teacher 2', audit.teacher2]);
+    const plainWb = XLSX.utils.book_new();
+    const plainWs = XLSX.utils.aoa_to_sheet(plainWsData);
+    plainWs['!cols'] = [{ wch: 8 }, { wch: 35 }, { wch: 70 }, { wch: 8 }, { wch: 15 }, { wch: 8 }, { wch: 10 }, { wch: 40 }];
+    XLSX.utils.book_append_sheet(plainWb, plainWs, 'Audit Data');
+    const plainXlsxData = XLSX.write(plainWb, { bookType: 'xlsx', type: 'array' });
 
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    ws['!cols'] = [{ wch: 8 }, { wch: 35 }, { wch: 70 }, { wch: 8 }, { wch: 15 }, { wch: 8 }, { wch: 10 }, { wch: 40 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Audit Results');
-
-    const xlsxData = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-
-    // Build ZIP
+    // === Build ZIP ===
     const zip = new JSZip();
-    const fileName = typeLabel + '_' + formatDate(audit.audit_date) + '_' + (audit.room || 'Room').replace(/[^a-zA-Z0-9]/g, '_');
-    zip.file(fileName + '.xlsx', xlsxData);
+    zip.file(fileName + '.xlsx', fmtXlsxData);
+    zip.file(fileName + '_data.xlsx', plainXlsxData);
 
     // Get photos from IndexedDB
     const photos = await getPhotosByAuditKey(detailAuditId);
@@ -1853,6 +1985,12 @@ async function exportAuditZip() {
     hideSpinner();
     toast('Export error: ' + err.message, 'error');
   }
+}
+
+// Helper for border style
+function thinBorder() {
+  const b = { style: 'thin', color: { rgb: 'CCCCCC' } };
+  return { top: b, bottom: b, left: b, right: b };
 }
 
 // ===== ADMIN DASHBOARD =====
