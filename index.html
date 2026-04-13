@@ -390,7 +390,7 @@ input,select,textarea{font-family:inherit;font-size:1rem}
     </div>
     <div class="form-group">
       <label>Room</label>
-      <input type="text" id="dashRoom" placeholder="All rooms">
+      <select id="dashRoom"><option value="">All Rooms</option></select>
     </div>
     <button class="btn btn-primary btn-sm" onclick="loadDashboard()">Apply</button>
   </div>
@@ -2098,6 +2098,14 @@ function initDashboard() {
   if (!document.getElementById('dashTo').value) {
     document.getElementById('dashTo').value = todayStr();
   }
+  // Populate room dropdown from lookups
+  const dashRoomEl = document.getElementById('dashRoom');
+  const currentVal = dashRoomEl.value;
+  dashRoomEl.innerHTML = '<option value="">All Rooms</option>';
+  lookupClassrooms.forEach(c => {
+    dashRoomEl.innerHTML += '<option value="' + escHtml(c.name) + '">' + escHtml(c.name) + '</option>';
+  });
+  dashRoomEl.value = currentVal;
   loadDashboard();
 }
 
@@ -2107,20 +2115,18 @@ async function loadDashboard() {
     const fromDate = document.getElementById('dashFrom').value;
     const toDate = document.getElementById('dashTo').value;
     const typeFilter = document.getElementById('dashType').value;
-    const roomFilter = document.getElementById('dashRoom').value.trim().toLowerCase();
+    const roomFilter = document.getElementById('dashRoom').value;
 
     let query = sb.from('audits').select('*').order('audit_date', { ascending: true });
     if (fromDate) query = query.gte('audit_date', fromDate);
     if (toDate) query = query.lte('audit_date', toDate);
     if (typeFilter) query = query.eq('audit_type', typeFilter);
+    if (roomFilter) query = query.eq('room', roomFilter);
 
     const { data: audits, error } = await query;
     if (error) throw error;
 
     let filtered = audits || [];
-    if (roomFilter) {
-      filtered = filtered.filter(a => (a.room || '').toLowerCase().includes(roomFilter));
-    }
 
     // Load profiles for teacher names
     const { data: profiles } = await sb.from('profiles').select('id, full_name');
@@ -2284,10 +2290,16 @@ async function loadDashboard() {
     // ---- Teacher Table ----
     const byTeacher = {};
     filtered.forEach(a => {
-      const name = profileMap[a.user_id] || 'Unknown';
-      if (!byTeacher[name]) byTeacher[name] = { sum: 0, count: 0 };
-      byTeacher[name].sum += (a.total_pct || 0);
-      byTeacher[name].count++;
+      if (a.teacher1) {
+        if (!byTeacher[a.teacher1]) byTeacher[a.teacher1] = { sum: 0, count: 0 };
+        byTeacher[a.teacher1].sum += (a.total_pct || 0);
+        byTeacher[a.teacher1].count++;
+      }
+      if (a.teacher2) {
+        if (!byTeacher[a.teacher2]) byTeacher[a.teacher2] = { sum: 0, count: 0 };
+        byTeacher[a.teacher2].sum += (a.total_pct || 0);
+        byTeacher[a.teacher2].count++;
+      }
     });
 
     const teacherBody = document.getElementById('teacherBody');
