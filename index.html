@@ -1164,12 +1164,13 @@ function hideSpinner() {
 }
 
 function todayStr() {
-  return new Date().toISOString().split('T')[0];
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
 function monthStart() {
   const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-01';
 }
 
 function formatDate(d) {
@@ -2521,14 +2522,14 @@ async function loadDashboard() {
         const diff = day === 0 ? -6 : 1 - day; // Monday start
         const weekStart = new Date(d);
         weekStart.setDate(d.getDate() + diff);
-        const key = weekStart.toISOString().split('T')[0];
+        const key = weekStart.getFullYear() + '-' + String(weekStart.getMonth()+1).padStart(2,'0') + '-' + String(weekStart.getDate()).padStart(2,'0');
         if (!weekMap[key]) weekMap[key] = { sum: 0, count: 0 };
         weekMap[key].sum += (a.total_pct || 0);
         weekMap[key].count++;
       });
       const sortedWeeks = Object.keys(weekMap).sort();
       const weekLabels = sortedWeeks.map(w => {
-        const mon = new Date(w);
+        const mon = parseLocalDate(w);
         const fri = new Date(mon.getTime() + 4*86400000);
         return mon.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) + ' - ' +
           fri.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
@@ -2603,7 +2604,7 @@ async function loadDashboard() {
         const diff = day === 0 ? -6 : 1 - day;
         const weekStart = new Date(d);
         weekStart.setDate(d.getDate() + diff);
-        const weekKey = weekStart.toISOString().split('T')[0];
+        const weekKey = weekStart.getFullYear() + '-' + String(weekStart.getMonth()+1).padStart(2,'0') + '-' + String(weekStart.getDate()).padStart(2,'0');
         const aType = auditLabel(a.audit_type);
         allWeeks.add(weekKey);
         allTypes.add(aType);
@@ -2615,7 +2616,7 @@ async function loadDashboard() {
 
       const sortedWeeks = [...allWeeks].sort();
       const weekLabels = sortedWeeks.map(w => {
-        const mon = new Date(w);
+        const mon = parseLocalDate(w);
         const fri = new Date(mon.getTime() + 4*86400000);
         return mon.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) + ' - ' +
           fri.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
