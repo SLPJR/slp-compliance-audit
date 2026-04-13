@@ -473,6 +473,7 @@ input,select,textarea{font-family:inherit;font-size:1rem}
   <div class="chart-container"><h3>Weekly Compliance Trend</h3><canvas id="chartTrend"></canvas></div>
   <div class="card"><h3 style="margin-bottom:8px;color:var(--primary)">Scores by Teacher</h3><table class="dash-table" id="teacherTable"><thead><tr><th>Teacher</th><th>Audit Type</th><th># Audits</th><th>Avg Score</th></tr></thead><tbody id="teacherBody"></tbody></table></div>
   <div class="chart-container"><h3>Weekly Breakdown</h3><canvas id="chartWeekly"></canvas></div>
+  <div class="chart-container"><h3>Individual Audit Scores by Week</h3><canvas id="chartIndividual"></canvas></div>
   <div class="card"><h3 style="margin-bottom:8px;color:var(--primary)">Scores by Section</h3><table class="dash-table" id="sectionTable"><thead><tr><th>Section</th><th>Avg Score</th></tr></thead><tbody id="sectionBody"></tbody></table></div>
 </div>
 
@@ -2653,6 +2654,88 @@ async function loadDashboard() {
           responsive: true,
           scales: { y: { beginAtZero: true, max: 100 } },
           plugins: { legend: { position: 'bottom' } }
+        }
+      });
+    }
+
+    // ---- Individual Audit Scores by Week ----
+    destroyChart('chartIndividual');
+    if (filtered.length > 0) {
+      const indWeeks = new Set();
+      const indByType = {};
+      filtered.forEach(a => {
+        const d = parseLocalDate(a.audit_date);
+        const day = d.getDay();
+        const diff = day === 0 ? -6 : 1 - day;
+        const weekStart = new Date(d);
+        weekStart.setDate(d.getDate() + diff);
+        const weekKey = weekStart.getFullYear() + '-' + String(weekStart.getMonth()+1).padStart(2,'0') + '-' + String(weekStart.getDate()).padStart(2,'0');
+        const aType = auditLabel(a.audit_type);
+        indWeeks.add(weekKey);
+        if (!indByType[aType]) indByType[aType] = [];
+        indByType[aType].push({
+          weekKey,
+          score: a.total_pct || 0,
+          label: formatDate(a.audit_date) + ' | ' + escHtml(a.room || '-') + ' | ' + escHtml(a.teacher1 || '-')
+        });
+      });
+
+      const indSortedWeeks = [...indWeeks].sort();
+      const indWeekLabels = indSortedWeeks.map(w => {
+        const mon = parseLocalDate(w);
+        const fri = new Date(mon.getTime() + 4*86400000);
+        return mon.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) + ' - ' +
+          fri.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+      });
+
+      const indColors = ['#1a5276', '#2980b9', '#27ae60', '#f39c12', '#e74c3c', '#8e44ad'];
+      const indTypes = Object.keys(indByType).sort();
+      const indDatasets = indTypes.map((type, i) => {
+        const points = [];
+        indByType[type].forEach(entry => {
+          const weekIdx = indSortedWeeks.indexOf(entry.weekKey);
+          points.push({ x: weekIdx, y: entry.score, detail: entry.label });
+        });
+        return {
+          label: type,
+          data: points,
+          backgroundColor: indColors[i % indColors.length] + 'CC',
+          borderColor: indColors[i % indColors.length],
+          borderWidth: 1,
+          pointRadius: 6,
+          pointHoverRadius: 8
+        };
+      });
+
+      dashCharts.chartIndividual = new Chart(document.getElementById('chartIndividual'), {
+        type: 'scatter',
+        data: { datasets: indDatasets },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              type: 'linear',
+              min: -0.5,
+              max: indSortedWeeks.length - 0.5,
+              ticks: {
+                stepSize: 1,
+                callback: function(val) { return indWeekLabels[val] || ''; }
+              }
+            },
+            y: { beginAtZero: true, max: 100, title: { display: true, text: 'Score %' } }
+          },
+          plugins: {
+            legend: { position: 'bottom' },
+            tooltip: {
+              callbacks: {
+                title: function(ctx) { return indWeekLabels[ctx[0].parsed.x] || ''; },
+                label: function(ctx) {
+                  const pt = ctx.dataset.data[ctx.dataIndex];
+                  return ctx.dataset.label + ': ' + ctx.parsed.y + '% — ' + (pt.detail || '');
+                }
+              }
+            }
+          }
         }
       });
     }
