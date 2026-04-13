@@ -479,7 +479,7 @@ input,select,textarea{font-family:inherit;font-size:1rem}
   <div class="chart-container"><h3>Weekly Breakdown</h3><canvas id="chartWeekly"></canvas></div>
   <div class="chart-container"><h3>Individual Audit Scores by Week</h3><canvas id="chartIndividual"></canvas></div>
   <div class="chart-container"><h3>Daily Audit Scores</h3><canvas id="chartDaily"></canvas></div>
-  <div class="card"><h3 style="margin-bottom:8px;color:var(--primary)">Scores by Section</h3><table class="dash-table" id="sectionTable"><thead><tr><th>Section</th><th>Avg Score</th></tr></thead><tbody id="sectionBody"></tbody></table></div>
+  <div class="card"><h3 style="margin-bottom:8px;color:var(--primary)">Scores by Section</h3><table class="dash-table" id="sectionTable"><thead><tr><th>Audit Type</th><th>Section</th><th>Avg Score</th></tr></thead><tbody id="sectionBody"></tbody></table></div>
 </div>
 
 <!-- Settings View -->
@@ -2519,35 +2519,40 @@ async function loadDashboard() {
         if (batchAns) allAnswers = allAnswers.concat(batchAns);
       }
 
-      // Group by section for lowest scoring
+      // Map audit_id to audit type label
+      const auditTypeMap = {};
+      filtered.forEach(a => auditTypeMap[a.id] = auditLabel(a.audit_type));
+
+      // Group by audit type + section for scoring
       const sectionScores = {};
       allAnswers.forEach(ans => {
-        if (!sectionScores[ans.section_name]) sectionScores[ans.section_name] = { achieved: 0, max: 0 };
-        sectionScores[ans.section_name].achieved += (ans.points || 0);
-        sectionScores[ans.section_name].max += (ans.max_points || 0);
+        const aType = auditTypeMap[ans.audit_id] || 'Unknown';
+        const key = aType + '||' + ans.section_name;
+        if (!sectionScores[key]) sectionScores[key] = { type: aType, section: ans.section_name, achieved: 0, max: 0 };
+        sectionScores[key].achieved += (ans.points || 0);
+        sectionScores[key].max += (ans.max_points || 0);
       });
 
       let lowestPct = 101;
-      Object.keys(sectionScores).forEach(sec => {
-        const s = sectionScores[sec];
+      Object.values(sectionScores).forEach(s => {
         const pct = s.max > 0 ? Math.round(s.achieved / s.max * 100) : 100;
-        if (pct < lowestPct) { lowestPct = pct; lowestArea = sec + ' (' + pct + '%)'; }
+        if (pct < lowestPct) { lowestPct = pct; lowestArea = s.section + ' (' + pct + '%)'; }
       });
 
       // Section scores table
       const sectionBody = document.getElementById('sectionBody');
       sectionBody.innerHTML = '';
-      const secEntries = Object.entries(sectionScores).map(([name, s]) => ({
-        name, pct: s.max > 0 ? Math.round(s.achieved / s.max * 100) : 0
-      })).sort((a, b) => a.pct - b.pct);
+      const secEntries = Object.values(sectionScores).map(s => ({
+        type: s.type, section: s.section, pct: s.max > 0 ? Math.round(s.achieved / s.max * 100) : 0
+      })).sort((a, b) => a.type.localeCompare(b.type) || a.pct - b.pct);
 
       secEntries.forEach(s => {
         const tr = document.createElement('tr');
-        tr.innerHTML = '<td>' + escHtml(s.name) + '</td><td><span class="score-badge ' + scoreBadgeClass(s.pct) + '">' + s.pct + '%</span></td>';
+        tr.innerHTML = '<td>' + escHtml(s.type) + '</td><td>' + escHtml(s.section) + '</td><td><span class="score-badge ' + scoreBadgeClass(s.pct) + '">' + s.pct + '%</span></td>';
         sectionBody.appendChild(tr);
       });
     } else {
-      document.getElementById('sectionBody').innerHTML = '<tr><td colspan="2" style="text-align:center;color:var(--text-light)">No data</td></tr>';
+      document.getElementById('sectionBody').innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-light)">No data</td></tr>';
     }
 
     // Render summary cards
