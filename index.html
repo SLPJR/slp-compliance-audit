@@ -1697,7 +1697,7 @@ function updateScores() {
       if (a.answer === 'compliant') { secAchieved += a.weight; secMax += a.weight; }
       else if (a.answer === 'non-compliant') { secMax += a.weight; }
       else if (a.answer === 'na') { /* exclude from scoring */ }
-      else { /* unanswered - include in max so score stays low until answered */ secMax += a.weight; }
+      // unanswered questions are excluded from scoring
     });
     totalAchieved += secAchieved;
     totalMax += secMax;
@@ -1801,7 +1801,7 @@ async function submitAudit() {
       if (a.answer === 'compliant') { totalAchieved += a.weight; totalMax += a.weight; }
       else if (a.answer === 'non-compliant') { totalMax += a.weight; }
       else if (a.answer === 'na') { /* exclude */ }
-      else { totalMax += a.weight; }
+      // unanswered questions are excluded from scoring
     });
   });
   const totalPct = totalMax > 0 ? Math.round(totalAchieved / totalMax * 100) : 0;
@@ -1833,7 +1833,7 @@ async function submitAudit() {
         if (a.answer === 'compliant') { points = a.weight; maxP = a.weight; }
         else if (a.answer === 'non-compliant') { points = 0; maxP = a.weight; }
         else if (a.answer === 'na') { points = 0; maxP = 0; }
-        else { points = 0; maxP = a.weight; }
+        // unanswered: points=0, maxP=0 (excluded from scoring)
 
         answers.push({
           audit_id: auditRow.id,
