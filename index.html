@@ -1805,7 +1805,7 @@ async function submitAudit() {
       }
     });
     if (answered.length > 0 && unanswered.length > 0) {
-      toast('Section "' + section.name + '" is incomplete. Please answer all questions or leave the entire section blank.', 'error');
+      toast('Section "' + section.name + '" is incomplete. Please answer all questions in the section, you cannot leave unanswered questions.', 'error');
       return;
     }
   }
