@@ -1789,7 +1789,8 @@ async function submitAudit() {
 
   if (!auditDate) { toast('Please enter audit date', 'error'); return; }
   if (!inspector) { toast('Please select an inspector', 'error'); return; }
-  if (!room && currentAuditType !== 'admin_facility') { toast('Please enter room/classroom', 'error'); return; }
+  if (!room && currentAuditType !== 'admin_facility') { toast('Please select a room/classroom', 'error'); return; }
+  if (!teacher1 && currentAuditType !== 'admin_facility') { toast('Please select at least one teacher', 'error'); return; }
 
   // Validate: if any question in a section is answered, ALL must be answered
   const audit = AUDITS[currentAuditType];
