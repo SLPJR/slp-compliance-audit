@@ -1892,43 +1892,52 @@ async function submitAudit() {
       if (bErr) throw bErr;
     }
 
-    // Get photos from IndexedDB
-    const db = await openPhotoDB();
-    const allStoredPhotos = await new Promise((res, rej) => {
-      const tx = db.transaction('photos', 'readonly');
-      const store = tx.objectStore('photos');
-      const r = store.getAll();
-      r.onsuccess = () => res(r.result);
-      r.onerror = () => rej(r.error);
-    });
-    const myPhotos = allStoredPhotos.filter(p => p.auditKey === auditTempKey);
+    // Handle photos: upload to Supabase Storage, update IndexedDB
+    try {
+      const db = await openPhotoDB();
+      const allStoredPhotos = await new Promise((res, rej) => {
+        const tx = db.transaction('photos', 'readonly');
+        const store = tx.objectStore('photos');
+        const r = store.getAll();
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+      });
+      const myPhotos = allStoredPhotos.filter(p => p.auditKey === auditTempKey);
 
-    // Upload photos to Supabase Storage (before touching IndexedDB)
-    for (let pi = 0; pi < myPhotos.length; pi++) {
-      const photo = myPhotos[pi];
-      try {
-        const base64 = photo.dataUrl.split(',')[1];
-        const binary = atob(base64);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-        const blob = new Blob([bytes], { type: 'image/jpeg' });
-        const path = auditRow.id + '/' + photo.itemId.replace(/\./g, '-') + '_' + pi + '.jpg';
-        await sb.storage.from('audit-photos').upload(path, blob, { contentType: 'image/jpeg', upsert: true });
-      } catch (uploadErr) {
-        console.warn('Photo upload failed:', uploadErr);
+      // Upload photos to Supabase Storage
+      for (let pi = 0; pi < myPhotos.length; pi++) {
+        try {
+          const photo = myPhotos[pi];
+          const base64 = photo.dataUrl.split(',')[1];
+          const binary = atob(base64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          const blob = new Blob([bytes], { type: 'image/jpeg' });
+          const path = auditRow.id + '/' + photo.itemId.replace(/\./g, '-') + '_' + pi + '.jpg';
+          await sb.storage.from('audit-photos').upload(path, blob, { contentType: 'image/jpeg', upsert: true });
+        } catch (uploadErr) {
+          console.warn('Photo upload failed:', uploadErr);
+        }
       }
-    }
 
-    // Update IndexedDB keys in a single transaction (no async inside)
-    if (myPhotos.length > 0) {
-      const tx2 = db.transaction('photos', 'readwrite');
-      const store2 = tx2.objectStore('photos');
-      for (const photo of myPhotos) {
-        store2.delete(photo.id);
-        const newId = auditRow.id + '::' + photo.itemId + '::' + photo.timestamp;
-        store2.put({ ...photo, id: newId, auditKey: auditRow.id });
+      // Update IndexedDB keys - fresh transaction after all async work is done
+      if (myPhotos.length > 0) {
+        try {
+          const db2 = await openPhotoDB();
+          const tx2 = db2.transaction('photos', 'readwrite');
+          const store2 = tx2.objectStore('photos');
+          for (const photo of myPhotos) {
+            store2.delete(photo.id);
+            const newId = auditRow.id + '::' + photo.itemId + '::' + photo.timestamp;
+            store2.put({ ...photo, id: newId, auditKey: auditRow.id });
+          }
+          await new Promise((res, rej) => { tx2.oncomplete = res; tx2.onerror = rej; });
+        } catch (idbErr) {
+          console.warn('IndexedDB update failed (non-critical):', idbErr);
+        }
       }
-      await new Promise((res, rej) => { tx2.oncomplete = res; tx2.onerror = rej; });
+    } catch (photoErr) {
+      console.warn('Photo handling failed (non-critical):', photoErr);
     }
 
     hideSpinner();
