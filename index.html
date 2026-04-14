@@ -2554,16 +2554,19 @@ async function loadDashboard() {
 
       let lowestPct = 101;
       Object.values(sectionScores).forEach(s => {
-        const pct = s.max > 0 ? Math.round(s.achieved / s.max * 100) : 100;
+        if (s.max === 0) return;
+        const pct = Math.round(s.achieved / s.max * 100);
         if (pct < lowestPct) { lowestPct = pct; lowestArea = s.section + ' (' + pct + '%)'; }
       });
 
       // Section scores table
       const sectionBody = document.getElementById('sectionBody');
       sectionBody.innerHTML = '';
-      const secEntries = Object.values(sectionScores).map(s => ({
-        type: s.type, section: s.section, pct: s.max > 0 ? Math.round(s.achieved / s.max * 100) : 0
-      })).sort((a, b) => a.type.localeCompare(b.type) || a.pct - b.pct);
+      const secEntries = Object.values(sectionScores)
+        .filter(s => s.max > 0)
+        .map(s => ({
+          type: s.type, section: s.section, pct: Math.round(s.achieved / s.max * 100)
+        })).sort((a, b) => a.type.localeCompare(b.type) || a.pct - b.pct);
 
       secEntries.forEach(s => {
         const tr = document.createElement('tr');
