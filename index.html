@@ -1892,7 +1892,7 @@ async function submitAudit() {
       if (bErr) throw bErr;
     }
 
-    // Update photo keys in IndexedDB to use actual audit ID
+    // Upload photos to Supabase Storage + keep in IndexedDB
     const db = await openPhotoDB();
     const allStoredPhotos = await new Promise((res, rej) => {
       const tx = db.transaction('photos', 'readonly');
@@ -1905,8 +1905,21 @@ async function submitAudit() {
     if (myPhotos.length > 0) {
       const tx2 = db.transaction('photos', 'readwrite');
       const store2 = tx2.objectStore('photos');
-      for (const photo of myPhotos) {
-        // Delete old entry and create new one with audit ID as key
+      for (let pi = 0; pi < myPhotos.length; pi++) {
+        const photo = myPhotos[pi];
+        // Upload to Supabase Storage
+        try {
+          const base64 = photo.dataUrl.split(',')[1];
+          const binary = atob(base64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          const blob = new Blob([bytes], { type: 'image/jpeg' });
+          const path = auditRow.id + '/' + photo.itemId.replace(/\./g, '-') + '_' + pi + '.jpg';
+          await sb.storage.from('audit-photos').upload(path, blob, { contentType: 'image/jpeg', upsert: true });
+        } catch (uploadErr) {
+          console.warn('Photo upload failed:', uploadErr);
+        }
+        // Update IndexedDB key
         store2.delete(photo.id);
         const newId = auditRow.id + '::' + photo.itemId + '::' + photo.timestamp;
         store2.put({ ...photo, id: newId, auditKey: auditRow.id });
@@ -2099,6 +2112,19 @@ async function loadAuditDetail(auditId) {
       sections[ans.section_name].push(ans);
     });
 
+    // Fetch photos from Supabase Storage
+    const { data: storagePhotos } = await sb.storage.from('audit-photos').list(auditId);
+    const photosByItem = {};
+    if (storagePhotos && storagePhotos.length > 0) {
+      for (const file of storagePhotos) {
+        // File name format: itemId_index.jpg (e.g., 6-1_0.jpg for item 6.1)
+        const itemId = file.name.split('_').slice(0, -1).join('_').replace(/-/g, '.');
+        if (!photosByItem[itemId]) photosByItem[itemId] = [];
+        const { data: urlData } = await sb.storage.from('audit-photos').createSignedUrl(auditId + '/' + file.name, 3600);
+        if (urlData) photosByItem[itemId].push(urlData.signedUrl);
+      }
+    }
+
     const container = document.getElementById('detailSections');
     container.innerHTML = '';
 
@@ -2138,6 +2164,21 @@ async function loadAuditDetail(auditId) {
           '<span class="di-answer ' + ansClass + '">' + ansLabel + '</span>';
 
         secDiv.appendChild(itemDiv);
+
+        // Show photos from Supabase Storage
+        const itemPhotos = photosByItem[ans.item_id] || [];
+        if (itemPhotos.length > 0) {
+          const photosDiv = document.createElement('div');
+          photosDiv.style.cssText = 'margin-left:48px;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:8px';
+          itemPhotos.forEach(url => {
+            const img = document.createElement('img');
+            img.src = url;
+            img.style.cssText = 'max-width:120px;max-height:120px;border-radius:6px;border:1px solid #ddd;cursor:pointer';
+            img.onclick = () => window.open(url, '_blank');
+            photosDiv.appendChild(img);
+          });
+          secDiv.appendChild(photosDiv);
+        }
 
         if (ans.comment) {
           const commentDiv = document.createElement('div');
@@ -2435,12 +2476,35 @@ async function exportAuditZip() {
     zip.file(fileName + '.xlsx', fmtXlsxData);
     zip.file(fileName + '_data.xlsx', plainXlsxData);
 
-    // Get photos from IndexedDB
-    const photos = await getPhotosByAuditKey(detailAuditId);
-    if (photos.length > 0) {
-      const compliantFolder = zip.folder('Compliant_Photos');
-      const nonCompliantFolder = zip.folder('Non_Compliant_Photos');
+    // Get photos from Supabase Storage first, then IndexedDB fallback
+    const compliantFolder = zip.folder('Compliant_Photos');
+    const nonCompliantFolder = zip.folder('Non_Compliant_Photos');
+    let hasPhotos = false;
 
+    // Try Supabase Storage
+    try {
+      const { data: storageFiles } = await sb.storage.from('audit-photos').list(detailAuditId);
+      if (storageFiles && storageFiles.length > 0) {
+        for (let fi = 0; fi < storageFiles.length; fi++) {
+          const file = storageFiles[fi];
+          const itemId = file.name.split('_').slice(0, -1).join('_').replace(/-/g, '.');
+          const { data: dlData } = await sb.storage.from('audit-photos').download(detailAuditId + '/' + file.name);
+          if (dlData) {
+            const arrayBuf = await dlData.arrayBuffer();
+            const ans = answers.find(a => a.item_id === itemId);
+            const folder = (ans && ans.answer === 'non-compliant') ? nonCompliantFolder : compliantFolder;
+            folder.file(file.name, arrayBuf);
+            hasPhotos = true;
+          }
+        }
+      }
+    } catch (storageErr) {
+      console.warn('Storage fetch failed, trying IndexedDB:', storageErr);
+    }
+
+    // Fallback to IndexedDB if no cloud photos
+    if (!hasPhotos) {
+      const photos = await getPhotosByAuditKey(detailAuditId);
       photos.forEach((photo, idx) => {
         const ans = answers.find(a => a.item_id === photo.itemId);
         const folder = (ans && ans.answer === 'non-compliant') ? nonCompliantFolder : compliantFolder;
