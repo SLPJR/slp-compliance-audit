@@ -469,6 +469,15 @@ input,select,textarea{font-family:inherit;font-size:1rem}
       <label>Inspector</label>
       <select id="dashInspector"><option value="">All Inspectors</option></select>
     </div>
+    <div class="form-group">
+      <label>Score Range</label>
+      <select id="dashScoreRange">
+        <option value="">All Scores</option>
+        <option value="0-59">0% - 59% (Low)</option>
+        <option value="60-79">60% - 79% (Medium)</option>
+        <option value="80-100">80% - 100% (High)</option>
+      </select>
+    </div>
     <button class="btn btn-primary btn-sm" onclick="loadDashboard()">Apply</button>
   </div>
   <div class="summary-cards" id="dashSummary"></div>
@@ -2516,6 +2525,11 @@ async function loadDashboard() {
     let filtered = audits || [];
     if (teacherFilter) {
       filtered = filtered.filter(a => a.teacher1 === teacherFilter || a.teacher2 === teacherFilter);
+    }
+    const scoreRange = document.getElementById('dashScoreRange').value;
+    if (scoreRange) {
+      const [minS, maxS] = scoreRange.split('-').map(Number);
+      filtered = filtered.filter(a => (a.total_pct || 0) >= minS && (a.total_pct || 0) <= maxS);
     }
 
     // Load profiles for teacher names
