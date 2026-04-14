@@ -1892,7 +1892,7 @@ async function submitAudit() {
       if (bErr) throw bErr;
     }
 
-    // Upload photos to Supabase Storage + keep in IndexedDB
+    // Get photos from IndexedDB
     const db = await openPhotoDB();
     const allStoredPhotos = await new Promise((res, rej) => {
       const tx = db.transaction('photos', 'readonly');
@@ -1902,24 +1902,28 @@ async function submitAudit() {
       r.onerror = () => rej(r.error);
     });
     const myPhotos = allStoredPhotos.filter(p => p.auditKey === auditTempKey);
+
+    // Upload photos to Supabase Storage (before touching IndexedDB)
+    for (let pi = 0; pi < myPhotos.length; pi++) {
+      const photo = myPhotos[pi];
+      try {
+        const base64 = photo.dataUrl.split(',')[1];
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const blob = new Blob([bytes], { type: 'image/jpeg' });
+        const path = auditRow.id + '/' + photo.itemId.replace(/\./g, '-') + '_' + pi + '.jpg';
+        await sb.storage.from('audit-photos').upload(path, blob, { contentType: 'image/jpeg', upsert: true });
+      } catch (uploadErr) {
+        console.warn('Photo upload failed:', uploadErr);
+      }
+    }
+
+    // Update IndexedDB keys in a single transaction (no async inside)
     if (myPhotos.length > 0) {
       const tx2 = db.transaction('photos', 'readwrite');
       const store2 = tx2.objectStore('photos');
-      for (let pi = 0; pi < myPhotos.length; pi++) {
-        const photo = myPhotos[pi];
-        // Upload to Supabase Storage
-        try {
-          const base64 = photo.dataUrl.split(',')[1];
-          const binary = atob(base64);
-          const bytes = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-          const blob = new Blob([bytes], { type: 'image/jpeg' });
-          const path = auditRow.id + '/' + photo.itemId.replace(/\./g, '-') + '_' + pi + '.jpg';
-          await sb.storage.from('audit-photos').upload(path, blob, { contentType: 'image/jpeg', upsert: true });
-        } catch (uploadErr) {
-          console.warn('Photo upload failed:', uploadErr);
-        }
-        // Update IndexedDB key
+      for (const photo of myPhotos) {
         store2.delete(photo.id);
         const newId = auditRow.id + '::' + photo.itemId + '::' + photo.timestamp;
         store2.put({ ...photo, id: newId, auditKey: auditRow.id });
