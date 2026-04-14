@@ -1791,8 +1791,24 @@ async function submitAudit() {
   if (!inspector) { toast('Please select an inspector', 'error'); return; }
   if (!room && currentAuditType !== 'admin_facility') { toast('Please enter room/classroom', 'error'); return; }
 
-  // Calculate totals
+  // Validate: if any question in a section is answered, ALL must be answered
   const audit = AUDITS[currentAuditType];
+  for (const section of audit.sections) {
+    const answered = [];
+    const unanswered = [];
+    section.items.forEach(item => {
+      const a = currentAnswers[item.id];
+      if (a && (a.answer === 'compliant' || a.answer === 'non-compliant' || a.answer === 'na')) {
+        answered.push(item.id);
+      } else {
+        unanswered.push(item.id);
+      }
+    });
+    if (answered.length > 0 && unanswered.length > 0) {
+      toast('Section "' + section.name + '" is incomplete. Please answer all questions or leave the entire section blank.', 'error');
+      return;
+    }
+  }
   let totalAchieved = 0, totalMax = 0;
   audit.sections.forEach(section => {
     section.items.forEach(item => {
@@ -2226,7 +2242,7 @@ async function exportAuditZip() {
             { v: item.id, s: itemCenterStyle },
             { v: item.text, s: itemStyle },
             { v: item.weight, s: itemCenterStyle },
-            { v: answer ? answer.charAt(0).toUpperCase() + answer.slice(1) : '', s: ansStyle },
+            { v: answer === 'na' ? 'N/A' : (answer === 'non-compliant' ? 'Non-Compliant' : (answer === 'compliant' ? 'Compliant' : '')), s: ansStyle },
             { v: pts, s: itemCenterStyle },
             { v: maxPts, s: itemCenterStyle },
             { v: comment, s: itemStyle }
@@ -2375,7 +2391,8 @@ async function exportAuditZip() {
           if (found) { itemText = found.text; break; }
         }
       }
-      plainWsData.push([ans.item_id, ans.section_name, itemText, ans.weight, ans.answer, ans.points, ans.max_points, ans.comment || '']);
+      const ansDisplay = ans.answer === 'na' ? 'N/A' : (ans.answer === 'non-compliant' ? 'Non-Compliant' : (ans.answer === 'compliant' ? 'Compliant' : ''));
+      plainWsData.push([ans.item_id, ans.section_name, itemText, ans.weight, ansDisplay, ans.points, ans.max_points, ans.comment || '']);
     });
     plainWsData.push([]);
     plainWsData.push(['TOTAL', '', '', '', '', audit.total_achieved, audit.total_max, audit.total_pct + '%']);
