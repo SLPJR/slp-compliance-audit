@@ -470,8 +470,17 @@ input,select,textarea{font-family:inherit;font-size:1rem}
       <select id="dashInspector"><option value="">All Inspectors</option></select>
     </div>
     <div class="form-group">
-      <label>Score Range</label>
+      <label>Overall Score</label>
       <select id="dashScoreRange">
+        <option value="">All Scores</option>
+        <option value="0-59">0% - 59% (Low)</option>
+        <option value="60-79">60% - 79% (Medium)</option>
+        <option value="80-100">80% - 100% (High)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Section Score</label>
+      <select id="dashSectionScore">
         <option value="">All Scores</option>
         <option value="0-59">0% - 59% (Low)</option>
         <option value="60-79">60% - 79% (Medium)</option>
@@ -2575,6 +2584,14 @@ async function loadDashboard() {
         if (pct < lowestPct) { lowestPct = pct; lowestArea = s.section + ' (' + pct + '%)'; }
       });
 
+      // Section score range filter
+      const secScoreRange = document.getElementById('dashSectionScore').value;
+      let secMinS = 0, secMaxS = 100;
+      if (secScoreRange) {
+        const parts = secScoreRange.split('-').map(Number);
+        secMinS = parts[0]; secMaxS = parts[1];
+      }
+
       // Section scores table
       const sectionBody = document.getElementById('sectionBody');
       sectionBody.innerHTML = '';
@@ -2582,7 +2599,9 @@ async function loadDashboard() {
         .filter(s => s.max > 0)
         .map(s => ({
           type: s.type, section: s.section, pct: Math.round(s.achieved / s.max * 100)
-        })).sort((a, b) => a.type.localeCompare(b.type) || a.pct - b.pct);
+        }))
+        .filter(s => !secScoreRange || (s.pct >= secMinS && s.pct <= secMaxS))
+        .sort((a, b) => a.type.localeCompare(b.type) || a.pct - b.pct);
 
       secEntries.forEach(s => {
         const tr = document.createElement('tr');
@@ -2611,7 +2630,8 @@ async function loadDashboard() {
       stBody.innerHTML = '';
       const stEntries = Object.values(secByTeacher).filter(s => s.max > 0).map(s => ({
         teacher: s.teacher, type: s.type, section: s.section, pct: Math.round(s.achieved / s.max * 100)
-      })).sort((a, b) => a.teacher.localeCompare(b.teacher) || a.type.localeCompare(b.type) || a.pct - b.pct);
+      })).filter(s => !secScoreRange || (s.pct >= secMinS && s.pct <= secMaxS))
+        .sort((a, b) => a.teacher.localeCompare(b.teacher) || a.type.localeCompare(b.type) || a.pct - b.pct);
       if (stEntries.length === 0) {
         stBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-light)">No data</td></tr>';
       } else {
@@ -2637,7 +2657,8 @@ async function loadDashboard() {
       srBody.innerHTML = '';
       const srEntries = Object.values(secByRoom).filter(s => s.max > 0).map(s => ({
         room: s.room, type: s.type, section: s.section, pct: Math.round(s.achieved / s.max * 100)
-      })).sort((a, b) => a.room.localeCompare(b.room) || a.type.localeCompare(b.type) || a.pct - b.pct);
+      })).filter(s => !secScoreRange || (s.pct >= secMinS && s.pct <= secMaxS))
+        .sort((a, b) => a.room.localeCompare(b.room) || a.type.localeCompare(b.type) || a.pct - b.pct);
       if (srEntries.length === 0) {
         srBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-light)">No data</td></tr>';
       } else {
