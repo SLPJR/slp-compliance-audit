@@ -1788,6 +1788,7 @@ async function submitAudit() {
   const teacher2 = document.getElementById('auditTeacher2').value.trim();
 
   if (!auditDate) { toast('Please enter audit date', 'error'); return; }
+  if (!inspector) { toast('Please select an inspector', 'error'); return; }
   if (!room && currentAuditType !== 'admin_facility') { toast('Please enter room/classroom', 'error'); return; }
 
   // Calculate totals
