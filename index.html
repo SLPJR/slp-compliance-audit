@@ -119,6 +119,18 @@ input,select,textarea{font-family:inherit;font-size:1rem}
 .score-mid{background:var(--warning)}
 .score-low{background:var(--danger)}
 
+/* Multi-select component */
+.ms-wrap{position:relative;flex:1;min-width:120px}
+.ms-toggle{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--white);cursor:pointer;font-size:.875rem;min-height:38px;user-select:none;gap:4px}
+.ms-toggle:hover{border-color:var(--primary)}
+.ms-dropdown{position:absolute;top:calc(100% + 2px);left:0;right:0;z-index:600;background:var(--white);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.18);max-height:220px;overflow-y:auto;display:none}
+.ms-dropdown.ms-open{display:block}
+.ms-option{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;font-size:.875rem;margin:0}
+.ms-option:hover{background:var(--bg)}
+.ms-option input{margin:0;accent-color:var(--primary);cursor:pointer;flex-shrink:0}
+.ms-badge{background:var(--primary);color:#fff;border-radius:10px;padding:1px 7px;font-size:.72rem;margin-left:4px}
+.ms-arrow{font-size:.6rem;color:var(--text-light);flex-shrink:0}
+
 /* Dashboard */
 .dash-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-end}
 .dash-filters .form-group{margin-bottom:0;flex:1;min-width:120px}
@@ -406,17 +418,33 @@ input,select,textarea{font-family:inherit;font-size:1rem}
 <div class="view" id="view-all-audits">
   <h2 style="margin-bottom:12px;color:var(--primary)">All Audits</h2>
   <div class="history-filters card">
-    <div class="form-group">
+    <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px">
       <label>Audit Type</label>
-      <select id="allFilterType"><option value="">All Types</option><option value="admin_facility">Admin & Facility</option><option value="licensing">Licensing</option><option value="ahs">AHS</option><option value="kitchen">Kitchen</option><option value="pedagogy">Pedagogy</option><option value="daily_compliance">Daily Compliance</option></select>
+      <div id="allFilterType-ms" class="ms-wrap" style="min-width:0">
+        <div class="ms-toggle" onclick="msTgl('allFilterType')"><span class="ms-lbl">All Types</span><span class="ms-arrow">▼</span></div>
+        <div class="ms-dropdown" id="allFilterType-ms-dd">
+          <label class="ms-option"><input type="checkbox" value="admin_facility" data-label="Admin &amp; Facility" onchange="msChange('allFilterType','All Types')"> Admin &amp; Facility</label>
+          <label class="ms-option"><input type="checkbox" value="licensing" data-label="Childcare Licensing" onchange="msChange('allFilterType','All Types')"> Childcare Licensing</label>
+          <label class="ms-option"><input type="checkbox" value="ahs" data-label="AHS Audit" onchange="msChange('allFilterType','All Types')"> AHS Audit</label>
+          <label class="ms-option"><input type="checkbox" value="kitchen" data-label="Kitchen Audit" onchange="msChange('allFilterType','All Types')"> Kitchen Audit</label>
+          <label class="ms-option"><input type="checkbox" value="pedagogy" data-label="Programming &amp; Pedagogy" onchange="msChange('allFilterType','All Types')"> Programming &amp; Pedagogy</label>
+          <label class="ms-option"><input type="checkbox" value="daily_compliance" data-label="Daily Compliance" onchange="msChange('allFilterType','All Types')"> Daily Compliance</label>
+        </div>
+      </div>
     </div>
-    <div class="form-group">
+    <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px">
       <label>Room</label>
-      <select id="allFilterRoom"><option value="">All Rooms</option></select>
+      <div id="allFilterRoom-ms" class="ms-wrap" style="min-width:0">
+        <div class="ms-toggle" onclick="msTgl('allFilterRoom')"><span class="ms-lbl">All Rooms</span><span class="ms-arrow">▼</span></div>
+        <div class="ms-dropdown" id="allFilterRoom-ms-dd"></div>
+      </div>
     </div>
-    <div class="form-group">
+    <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px">
       <label>Inspector</label>
-      <select id="allFilterInspector"><option value="">All Inspectors</option></select>
+      <div id="allFilterInspector-ms" class="ms-wrap" style="min-width:0">
+        <div class="ms-toggle" onclick="msTgl('allFilterInspector')"><span class="ms-lbl">All Inspectors</span><span class="ms-arrow">▼</span></div>
+        <div class="ms-dropdown" id="allFilterInspector-ms-dd"></div>
+      </div>
     </div>
     <div class="form-group">
       <label>From</label>
@@ -453,21 +481,40 @@ input,select,textarea{font-family:inherit;font-size:1rem}
       <label>To</label>
       <input type="date" id="dashTo">
     </div>
-    <div class="form-group">
+    <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px">
       <label>Audit Type</label>
-      <select id="dashType"><option value="">All Types</option><option value="admin_facility">Admin & Facility</option><option value="licensing">Licensing</option><option value="ahs">AHS</option><option value="kitchen">Kitchen</option><option value="pedagogy">Pedagogy</option><option value="daily_compliance">Daily Compliance</option></select>
+      <div id="dashType-ms" class="ms-wrap" style="min-width:0">
+        <div class="ms-toggle" onclick="msTgl('dashType')"><span class="ms-lbl">All Types</span><span class="ms-arrow">▼</span></div>
+        <div class="ms-dropdown" id="dashType-ms-dd">
+          <label class="ms-option"><input type="checkbox" value="admin_facility" data-label="Admin &amp; Facility" onchange="msChange('dashType','All Types')"> Admin &amp; Facility</label>
+          <label class="ms-option"><input type="checkbox" value="licensing" data-label="Childcare Licensing" onchange="msChange('dashType','All Types')"> Childcare Licensing</label>
+          <label class="ms-option"><input type="checkbox" value="ahs" data-label="AHS Audit" onchange="msChange('dashType','All Types')"> AHS Audit</label>
+          <label class="ms-option"><input type="checkbox" value="kitchen" data-label="Kitchen Audit" onchange="msChange('dashType','All Types')"> Kitchen Audit</label>
+          <label class="ms-option"><input type="checkbox" value="pedagogy" data-label="Programming &amp; Pedagogy" onchange="msChange('dashType','All Types')"> Programming &amp; Pedagogy</label>
+          <label class="ms-option"><input type="checkbox" value="daily_compliance" data-label="Daily Compliance" onchange="msChange('dashType','All Types')"> Daily Compliance</label>
+        </div>
+      </div>
     </div>
-    <div class="form-group">
+    <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px">
       <label>Room</label>
-      <select id="dashRoom"><option value="">All Rooms</option></select>
+      <div id="dashRoom-ms" class="ms-wrap" style="min-width:0">
+        <div class="ms-toggle" onclick="msTgl('dashRoom')"><span class="ms-lbl">All Rooms</span><span class="ms-arrow">▼</span></div>
+        <div class="ms-dropdown" id="dashRoom-ms-dd"></div>
+      </div>
     </div>
-    <div class="form-group">
+    <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px">
       <label>Teacher</label>
-      <select id="dashTeacher"><option value="">All Teachers</option></select>
+      <div id="dashTeacher-ms" class="ms-wrap" style="min-width:0">
+        <div class="ms-toggle" onclick="msTgl('dashTeacher')"><span class="ms-lbl">All Teachers</span><span class="ms-arrow">▼</span></div>
+        <div class="ms-dropdown" id="dashTeacher-ms-dd"></div>
+      </div>
     </div>
-    <div class="form-group">
+    <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px">
       <label>Inspector</label>
-      <select id="dashInspector"><option value="">All Inspectors</option></select>
+      <div id="dashInspector-ms" class="ms-wrap" style="min-width:0">
+        <div class="ms-toggle" onclick="msTgl('dashInspector')"><span class="ms-lbl">All Inspectors</span><span class="ms-arrow">▼</span></div>
+        <div class="ms-dropdown" id="dashInspector-ms-dd"></div>
+      </div>
     </div>
     <div class="form-group">
       <label>Overall Score</label>
@@ -497,9 +544,11 @@ input,select,textarea{font-family:inherit;font-size:1rem}
   <div class="chart-container"><h3>Weekly Breakdown</h3><canvas id="chartWeekly"></canvas></div>
   <div class="chart-container"><h3>Individual Audit Scores by Week</h3><canvas id="chartIndividual"></canvas></div>
   <div class="chart-container"><h3>Daily Audit Scores</h3><canvas id="chartDaily"></canvas></div>
-  <div class="card"><h3 style="margin-bottom:8px;color:var(--primary)">Scores by Section</h3><table class="dash-table" id="sectionTable"><thead><tr><th>Audit Type</th><th>Section</th><th>Avg Score</th></tr></thead><tbody id="sectionBody"></tbody></table></div>
-  <div class="card"><h3 style="margin-bottom:8px;color:var(--primary)">Scores by Section per Teacher</h3><table class="dash-table" id="sectionTeacherTable"><thead><tr><th>Teacher</th><th>Audit Type</th><th>Section</th><th>Avg Score</th></tr></thead><tbody id="sectionTeacherBody"></tbody></table></div>
-  <div class="card"><h3 style="margin-bottom:8px;color:var(--primary)">Scores by Section per Classroom</h3><table class="dash-table" id="sectionRoomTable"><thead><tr><th>Classroom</th><th>Audit Type</th><th>Section</th><th>Avg Score</th></tr></thead><tbody id="sectionRoomBody"></tbody></table></div>
+  <div class="chart-container"><h3>Avg Score by Teacher</h3><canvas id="chartByTeacher"></canvas></div>
+  <div class="chart-container"><h3>Avg Score by Classroom</h3><canvas id="chartByClassroom"></canvas></div>
+  <div class="card"><h3 style="margin-bottom:4px;color:var(--primary)">Scores by Section <span style="font-size:.75rem;font-weight:400;color:var(--text-light)">(showing &lt; 100% only)</span></h3><table class="dash-table" id="sectionTable"><thead><tr><th>Audit Type</th><th>Section</th><th>Avg Score</th></tr></thead><tbody id="sectionBody"></tbody></table></div>
+  <div class="card"><h3 style="margin-bottom:4px;color:var(--primary)">Scores by Section per Teacher <span style="font-size:.75rem;font-weight:400;color:var(--text-light)">(showing &lt; 100% only)</span></h3><table class="dash-table" id="sectionTeacherTable"><thead><tr><th>Teacher</th><th>Audit Type</th><th>Section</th><th>Avg Score</th></tr></thead><tbody id="sectionTeacherBody"></tbody></table></div>
+  <div class="card"><h3 style="margin-bottom:4px;color:var(--primary)">Scores by Section per Classroom <span style="font-size:.75rem;font-weight:400;color:var(--text-light)">(showing &lt; 100% only)</span></h3><table class="dash-table" id="sectionRoomTable"><thead><tr><th>Classroom</th><th>Audit Type</th><th>Section</th><th>Avg Score</th></tr></thead><tbody id="sectionRoomBody"></tbody></table></div>
 </div>
 
 <!-- Section Drill-Down Modal -->
@@ -1966,22 +2015,9 @@ async function submitAudit() {
 
 // ===== ALL AUDITS (ADMIN) =====
 function initAllAudits() {
-  // Populate room filter
-  const roomEl = document.getElementById('allFilterRoom');
-  const curVal = roomEl.value;
-  roomEl.innerHTML = '<option value="">All Rooms</option>';
-  lookupClassrooms.forEach(c => {
-    roomEl.innerHTML += '<option value="' + escHtml(c.name) + '">' + escHtml(c.name) + '</option>';
-  });
-  roomEl.value = curVal;
-  // Populate inspector filter
-  const inspEl = document.getElementById('allFilterInspector');
-  const curInsp = inspEl.value;
-  inspEl.innerHTML = '<option value="">All Inspectors</option>';
-  lookupInspectors.forEach(i => {
-    inspEl.innerHTML += '<option value="' + escHtml(i.name) + '">' + escHtml(i.name) + '</option>';
-  });
-  inspEl.value = curInsp;
+  // Populate multi-select dropdowns
+  msSetOptions('allFilterRoom', lookupClassrooms.map(c => ({value: c.name, label: c.name})), 'All Rooms');
+  msSetOptions('allFilterInspector', lookupInspectors.map(i => ({value: i.name, label: i.name})), 'All Inspectors');
   if (!document.getElementById('allFilterFrom').value) {
     document.getElementById('allFilterFrom').value = monthStart();
   }
@@ -1994,16 +2030,19 @@ function initAllAudits() {
 async function loadAllAudits() {
   showSpinner();
   try {
-    const typeFilter = document.getElementById('allFilterType').value;
-    const roomFilter = document.getElementById('allFilterRoom').value;
+    const typeFiltersAll = msGetValues('allFilterType');
+    const roomFiltersAll = msGetValues('allFilterRoom');
+    const inspectorFiltersAll = msGetValues('allFilterInspector');
     const fromDate = document.getElementById('allFilterFrom').value;
     const toDate = document.getElementById('allFilterTo').value;
 
     let query = sb.from('audits').select('*').order('audit_date', { ascending: false });
-    if (typeFilter) query = query.eq('audit_type', typeFilter);
-    if (roomFilter) query = query.eq('room', roomFilter);
-    const inspectorFilter = document.getElementById('allFilterInspector').value;
-    if (inspectorFilter) query = query.eq('inspector', inspectorFilter);
+    if (typeFiltersAll.length === 1) query = query.eq('audit_type', typeFiltersAll[0]);
+    else if (typeFiltersAll.length > 1) query = query.in('audit_type', typeFiltersAll);
+    if (roomFiltersAll.length === 1) query = query.eq('room', roomFiltersAll[0]);
+    else if (roomFiltersAll.length > 1) query = query.in('room', roomFiltersAll);
+    if (inspectorFiltersAll.length === 1) query = query.eq('inspector', inspectorFiltersAll[0]);
+    else if (inspectorFiltersAll.length > 1) query = query.in('inspector', inspectorFiltersAll);
     if (fromDate) query = query.gte('audit_date', fromDate);
     if (toDate) query = query.lte('audit_date', toDate);
 
@@ -2564,6 +2603,47 @@ function thinBorder() {
   return { top: b, bottom: b, left: b, right: b };
 }
 
+// ===== MULTI-SELECT COMPONENT =====
+function msTgl(id) {
+  const dd = document.getElementById(id + '-ms-dd');
+  if (!dd) return;
+  const isOpen = dd.classList.contains('ms-open');
+  document.querySelectorAll('.ms-dropdown.ms-open').forEach(d => d.classList.remove('ms-open'));
+  if (!isOpen) dd.classList.add('ms-open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.ms-wrap')) {
+    document.querySelectorAll('.ms-dropdown.ms-open').forEach(d => d.classList.remove('ms-open'));
+  }
+});
+function msChange(id, placeholder) {
+  const wrap = document.getElementById(id + '-ms');
+  if (!wrap) return;
+  const checked = [...wrap.querySelectorAll('input[type=checkbox]:checked')];
+  const lbl = wrap.querySelector('.ms-lbl');
+  if (!lbl) return;
+  if (checked.length === 0) lbl.innerHTML = escHtml(placeholder);
+  else if (checked.length === 1) lbl.textContent = checked[0].dataset.label || checked[0].value;
+  else lbl.innerHTML = escHtml(placeholder) + ' <span class="ms-badge">' + checked.length + '</span>';
+}
+function msGetValues(id) {
+  const wrap = document.getElementById(id + '-ms');
+  if (!wrap) return [];
+  return [...wrap.querySelectorAll('input[type=checkbox]:checked')].map(i => i.value).filter(Boolean);
+}
+function msSetOptions(id, options, placeholder) {
+  const dd = document.getElementById(id + '-ms-dd');
+  if (!dd) return;
+  dd.innerHTML = options.map(o =>
+    '<label class="ms-option"><input type="checkbox" value="' + escHtml(o.value) +
+    '" data-label="' + escHtml(o.label) + '" onchange="msChange(\'' + id + '\',\'' +
+    placeholder.replace(/'/g, "\\'") + '\')"> ' + escHtml(o.label) + '</label>'
+  ).join('');
+  // Reset label
+  const wrap = document.getElementById(id + '-ms');
+  if (wrap) { const lbl = wrap.querySelector('.ms-lbl'); if (lbl) lbl.innerHTML = escHtml(placeholder); }
+}
+
 // ===== ADMIN DASHBOARD =====
 function initDashboard() {
   if (!document.getElementById('dashFrom').value) {
@@ -2572,30 +2652,10 @@ function initDashboard() {
   if (!document.getElementById('dashTo').value) {
     document.getElementById('dashTo').value = todayStr();
   }
-  // Populate dropdowns from lookups
-  const dashRoomEl = document.getElementById('dashRoom');
-  const curRoom = dashRoomEl.value;
-  dashRoomEl.innerHTML = '<option value="">All Rooms</option>';
-  lookupClassrooms.forEach(c => {
-    dashRoomEl.innerHTML += '<option value="' + escHtml(c.name) + '">' + escHtml(c.name) + '</option>';
-  });
-  dashRoomEl.value = curRoom;
-
-  const dashTeacherEl = document.getElementById('dashTeacher');
-  const curTeacher = dashTeacherEl.value;
-  dashTeacherEl.innerHTML = '<option value="">All Teachers</option>';
-  lookupTeachers.forEach(t => {
-    dashTeacherEl.innerHTML += '<option value="' + escHtml(t.name) + '">' + escHtml(t.name) + '</option>';
-  });
-  dashTeacherEl.value = curTeacher;
-
-  const dashInspectorEl = document.getElementById('dashInspector');
-  const curInspector = dashInspectorEl.value;
-  dashInspectorEl.innerHTML = '<option value="">All Inspectors</option>';
-  lookupInspectors.forEach(i => {
-    dashInspectorEl.innerHTML += '<option value="' + escHtml(i.name) + '">' + escHtml(i.name) + '</option>';
-  });
-  dashInspectorEl.value = curInspector;
+  // Populate multi-select dropdowns from lookups
+  msSetOptions('dashRoom', lookupClassrooms.map(c => ({value: c.name, label: c.name})), 'All Rooms');
+  msSetOptions('dashTeacher', lookupTeachers.map(t => ({value: t.name, label: t.name})), 'All Teachers');
+  msSetOptions('dashInspector', lookupInspectors.map(i => ({value: i.name, label: i.name})), 'All Inspectors');
 
   loadDashboard();
 }
@@ -2605,25 +2665,27 @@ async function loadDashboard() {
   try {
     const fromDate = document.getElementById('dashFrom').value;
     const toDate = document.getElementById('dashTo').value;
-    const typeFilter = document.getElementById('dashType').value;
-    const roomFilter = document.getElementById('dashRoom').value;
+    const typeFilters = msGetValues('dashType');
+    const roomFilters = msGetValues('dashRoom');
+    const teacherFilters = msGetValues('dashTeacher');
+    const inspectorFilters = msGetValues('dashInspector');
 
     let query = sb.from('audits').select('*').order('audit_date', { ascending: true });
     if (fromDate) query = query.gte('audit_date', fromDate);
     if (toDate) query = query.lte('audit_date', toDate);
-    if (typeFilter) query = query.eq('audit_type', typeFilter);
-    if (roomFilter) query = query.eq('room', roomFilter);
-
-    const teacherFilter = document.getElementById('dashTeacher').value;
-    const inspectorFilter = document.getElementById('dashInspector').value;
-    if (inspectorFilter) query = query.eq('inspector', inspectorFilter);
+    if (typeFilters.length === 1) query = query.eq('audit_type', typeFilters[0]);
+    else if (typeFilters.length > 1) query = query.in('audit_type', typeFilters);
+    if (roomFilters.length === 1) query = query.eq('room', roomFilters[0]);
+    else if (roomFilters.length > 1) query = query.in('room', roomFilters);
+    if (inspectorFilters.length === 1) query = query.eq('inspector', inspectorFilters[0]);
+    else if (inspectorFilters.length > 1) query = query.in('inspector', inspectorFilters);
 
     const { data: audits, error } = await query;
     if (error) throw error;
 
     let filtered = audits || [];
-    if (teacherFilter) {
-      filtered = filtered.filter(a => a.teacher1 === teacherFilter || a.teacher2 === teacherFilter);
+    if (teacherFilters.length > 0) {
+      filtered = filtered.filter(a => teacherFilters.includes(a.teacher1) || teacherFilters.includes(a.teacher2));
     }
     const scoreRange = document.getElementById('dashScoreRange').value;
     if (scoreRange) {
@@ -2690,6 +2752,7 @@ async function loadDashboard() {
         .map(s => ({
           type: s.type, section: s.section, pct: Math.round(s.achieved / s.max * 100)
         }))
+        .filter(s => s.pct < 100)
         .filter(s => !secScoreRange || (s.pct >= secMinS && s.pct <= secMaxS))
         .sort((a, b) => a.type.localeCompare(b.type) || a.pct - b.pct);
 
@@ -2723,7 +2786,7 @@ async function loadDashboard() {
       stBody.innerHTML = '';
       const stEntries = Object.values(secByTeacher).filter(s => s.max > 0).map(s => ({
         teacher: s.teacher, type: s.type, section: s.section, pct: Math.round(s.achieved / s.max * 100)
-      })).filter(s => !secScoreRange || (s.pct >= secMinS && s.pct <= secMaxS))
+      })).filter(s => s.pct < 100).filter(s => !secScoreRange || (s.pct >= secMinS && s.pct <= secMaxS))
         .sort((a, b) => a.teacher.localeCompare(b.teacher) || a.type.localeCompare(b.type) || a.pct - b.pct);
       if (stEntries.length === 0) {
         stBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-light)">No data</td></tr>';
@@ -2753,7 +2816,7 @@ async function loadDashboard() {
       srBody.innerHTML = '';
       const srEntries = Object.values(secByRoom).filter(s => s.max > 0).map(s => ({
         room: s.room, type: s.type, section: s.section, pct: Math.round(s.achieved / s.max * 100)
-      })).filter(s => !secScoreRange || (s.pct >= secMinS && s.pct <= secMaxS))
+      })).filter(s => s.pct < 100).filter(s => !secScoreRange || (s.pct >= secMinS && s.pct <= secMaxS))
         .sort((a, b) => a.room.localeCompare(b.room) || a.type.localeCompare(b.type) || a.pct - b.pct);
       if (srEntries.length === 0) {
         srBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-light)">No data</td></tr>';
@@ -2788,26 +2851,44 @@ async function loadDashboard() {
       byType[a.audit_type].count++;
     });
 
+    // Helper: color bar by score value
+    function barColor(v) { return v >= 90 ? '#27ae60' : v >= 80 ? '#f39c12' : '#e74c3c'; }
+    // Color-zone background plugin (green 90-110, yellow 80-90, red 0-80)
+    const colorZonePlugin = {
+      id: 'colorZones',
+      beforeDraw(chart) {
+        const yAxis = chart.scales.y;
+        const xAxis = chart.scales.x;
+        if (!yAxis) return;
+        const ctx = chart.ctx;
+        const left = chart.chartArea.left;
+        const right = chart.chartArea.right;
+        const getY = v => yAxis.getPixelForValue(Math.min(v, yAxis.max));
+        ctx.save();
+        ctx.fillStyle = 'rgba(231,76,60,0.07)';
+        ctx.fillRect(left, getY(80), right - left, getY(0) - getY(80));
+        ctx.fillStyle = 'rgba(243,156,18,0.07)';
+        ctx.fillRect(left, getY(90), right - left, getY(80) - getY(90));
+        ctx.fillStyle = 'rgba(39,174,96,0.07)';
+        ctx.fillRect(left, getY(chart.scales.y.max), right - left, getY(90) - getY(chart.scales.y.max));
+        ctx.restore();
+      }
+    };
+
     destroyChart('chartByType');
     if (Object.keys(byType).length > 0) {
-      const labels = Object.keys(byType).map(t => auditLabel(t));
-      const values = Object.keys(byType).map(t => Math.round(byType[t].sum / byType[t].count));
-      const colors = ['#1a5276', '#2980b9', '#27ae60', '#f39c12'];
+      const typeKeys = Object.keys(byType).sort((a,b) => Math.round(byType[b].sum/byType[b].count) - Math.round(byType[a].sum/byType[a].count));
+      const labels = typeKeys.map(t => auditLabel(t));
+      const values = typeKeys.map(t => Math.round(byType[t].sum / byType[t].count));
       dashCharts.chartByType = new Chart(document.getElementById('chartByType'), {
         type: 'bar',
-        data: {
-          labels,
-          datasets: [{
-            label: 'Avg Score %',
-            data: values,
-            backgroundColor: labels.map((_, i) => colors[i % colors.length])
-          }]
-        },
+        data: { labels, datasets: [{ label: 'Avg Score %', data: values, backgroundColor: values.map(barColor) }] },
         options: {
           responsive: true,
-          scales: { y: { beginAtZero: true, max: 100 } },
-          plugins: { legend: { display: false } }
-        }
+          scales: { y: { beginAtZero: true, max: 110 } },
+          plugins: { legend: { display: false }, colorZones: true }
+        },
+        plugins: [colorZonePlugin]
       });
     }
 
@@ -2822,19 +2903,17 @@ async function loadDashboard() {
 
     destroyChart('chartByRoom');
     if (Object.keys(byRoom).length > 0) {
-      const roomLabels = Object.keys(byRoom);
-      const roomValues = roomLabels.map(r => Math.round(byRoom[r].sum / byRoom[r].count));
+      const roomKeys = Object.keys(byRoom).sort((a,b) => Math.round(byRoom[b].sum/byRoom[b].count) - Math.round(byRoom[a].sum/byRoom[a].count));
+      const roomValues = roomKeys.map(r => Math.round(byRoom[r].sum / byRoom[r].count));
       dashCharts.chartByRoom = new Chart(document.getElementById('chartByRoom'), {
         type: 'bar',
-        data: {
-          labels: roomLabels,
-          datasets: [{ label: 'Avg Score %', data: roomValues, backgroundColor: '#2980b9' }]
-        },
+        data: { labels: roomKeys, datasets: [{ label: 'Avg Score %', data: roomValues, backgroundColor: roomValues.map(barColor) }] },
         options: {
           responsive: true,
-          scales: { y: { beginAtZero: true, max: 100 } },
-          plugins: { legend: { display: false } }
-        }
+          scales: { y: { beginAtZero: true, max: 110 } },
+          plugins: { legend: { display: false }, colorZones: true }
+        },
+        plugins: [colorZonePlugin]
       });
     }
 
@@ -2874,13 +2953,15 @@ async function loadDashboard() {
             fill: true,
             tension: 0.3,
             pointRadius: 4,
-            pointBackgroundColor: '#1a5276'
+            pointBackgroundColor: weekValues.map(barColor)
           }]
         },
         options: {
           responsive: true,
-          scales: { y: { beginAtZero: true, max: 100 } }
-        }
+          scales: { y: { beginAtZero: true, max: 110 } },
+          plugins: { colorZones: true }
+        },
+        plugins: [colorZonePlugin]
       });
     }
 
@@ -2916,6 +2997,48 @@ async function loadDashboard() {
             '<td><span class="score-badge ' + scoreBadgeClass(avg) + '">' + avg + '%</span></td>';
           teacherBody.appendChild(tr);
         });
+    }
+
+    // ---- Chart: Avg Score by Teacher (sorted high→low) ----
+    const byTeacherScore = {};
+    filtered.forEach(a => {
+      [a.teacher1, a.teacher2].filter(Boolean).forEach(t => {
+        if (!byTeacherScore[t]) byTeacherScore[t] = { sum: 0, count: 0 };
+        byTeacherScore[t].sum += (a.total_pct || 0);
+        byTeacherScore[t].count++;
+      });
+    });
+    destroyChart('chartByTeacher');
+    if (Object.keys(byTeacherScore).length > 0) {
+      const tKeys = Object.keys(byTeacherScore).sort((a,b) => Math.round(byTeacherScore[b].sum/byTeacherScore[b].count) - Math.round(byTeacherScore[a].sum/byTeacherScore[a].count));
+      const tVals = tKeys.map(t => Math.round(byTeacherScore[t].sum / byTeacherScore[t].count));
+      dashCharts.chartByTeacher = new Chart(document.getElementById('chartByTeacher'), {
+        type: 'bar',
+        data: { labels: tKeys, datasets: [{ label: 'Avg Score %', data: tVals, backgroundColor: tVals.map(barColor) }] },
+        options: {
+          responsive: true,
+          scales: { y: { beginAtZero: true, max: 110 }, x: { ticks: { maxRotation: 30 } } },
+          plugins: { legend: { display: false }, colorZones: true }
+        },
+        plugins: [colorZonePlugin]
+      });
+    }
+
+    // ---- Chart: Avg Score by Classroom (sorted high→low) ----
+    destroyChart('chartByClassroom');
+    if (Object.keys(byRoom).length > 0) {
+      const clKeys = Object.keys(byRoom).sort((a,b) => Math.round(byRoom[b].sum/byRoom[b].count) - Math.round(byRoom[a].sum/byRoom[a].count));
+      const clVals = clKeys.map(r => Math.round(byRoom[r].sum / byRoom[r].count));
+      dashCharts.chartByClassroom = new Chart(document.getElementById('chartByClassroom'), {
+        type: 'bar',
+        data: { labels: clKeys, datasets: [{ label: 'Avg Score %', data: clVals, backgroundColor: clVals.map(barColor) }] },
+        options: {
+          responsive: true,
+          scales: { y: { beginAtZero: true, max: 110 }, x: { ticks: { maxRotation: 30 } } },
+          plugins: { legend: { display: false }, colorZones: true }
+        },
+        plugins: [colorZonePlugin]
+      });
     }
 
     // ---- Weekly Breakdown Bar Chart (Mon-Fri, grouped by audit type) ----
@@ -2964,9 +3087,10 @@ async function loadDashboard() {
         data: { labels: weekLabels, datasets },
         options: {
           responsive: true,
-          scales: { y: { beginAtZero: true, max: 100 } },
-          plugins: { legend: { position: 'bottom' } }
-        }
+          scales: { y: { beginAtZero: true, max: 110 } },
+          plugins: { legend: { position: 'bottom' }, colorZones: true }
+        },
+        plugins: [colorZonePlugin]
       });
     }
 
@@ -3015,7 +3139,7 @@ async function loadDashboard() {
                 }
               }
             },
-            y: { beginAtZero: true, max: 100, title: { display: true, text: 'Score %' } }
+            y: { beginAtZero: true, max: 110, title: { display: true, text: 'Score %' } }
           },
           plugins: {
             legend: { position: 'bottom' },
@@ -3101,7 +3225,7 @@ async function loadDashboard() {
                 callback: function(val) { return indWeekLabels[val] || ''; }
               }
             },
-            y: { beginAtZero: true, max: 100, title: { display: true, text: 'Score %' } }
+            y: { beginAtZero: true, max: 110, title: { display: true, text: 'Score %' } }
           },
           plugins: {
             legend: { position: 'bottom' },
