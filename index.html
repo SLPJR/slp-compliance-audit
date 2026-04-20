@@ -502,6 +502,19 @@ input,select,textarea{font-family:inherit;font-size:1rem}
   <div class="card"><h3 style="margin-bottom:8px;color:var(--primary)">Scores by Section per Classroom</h3><table class="dash-table" id="sectionRoomTable"><thead><tr><th>Classroom</th><th>Audit Type</th><th>Section</th><th>Avg Score</th></tr></thead><tbody id="sectionRoomBody"></tbody></table></div>
 </div>
 
+<!-- Section Drill-Down Modal -->
+<div id="sectionDrillModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;overflow-y:auto">
+  <div style="background:#fff;max-width:700px;margin:40px auto;border-radius:12px;padding:24px;position:relative">
+    <button onclick="document.getElementById('sectionDrillModal').style.display='none'" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#666">&times;</button>
+    <h3 id="drillTitle" style="color:var(--primary);margin-bottom:4px"></h3>
+    <p id="drillSubtitle" style="color:var(--text-light);font-size:.85rem;margin-bottom:16px"></p>
+    <table class="dash-table" style="width:100%">
+      <thead><tr><th style="width:60px">Item</th><th>Question</th><th style="width:90px;text-align:center">Compliant</th><th style="width:100px;text-align:center">Non-Compliant</th><th style="width:50px;text-align:center">N/A</th><th style="width:80px;text-align:center">Avg Score</th></tr></thead>
+      <tbody id="drillBody"></tbody>
+    </table>
+  </div>
+</div>
+
 <!-- Settings View -->
 <div class="view" id="view-settings">
   <h2 style="margin-bottom:16px;color:var(--primary)">Settings</h2>
@@ -2681,7 +2694,10 @@ async function loadDashboard() {
 
       secEntries.forEach(s => {
         const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.title = 'Click to see question details';
         tr.innerHTML = '<td>' + escHtml(s.type) + '</td><td>' + escHtml(s.section) + '</td><td><span class="score-badge ' + scoreBadgeClass(s.pct) + '">' + s.pct + '%</span></td>';
+        tr.onclick = () => showSectionDrill(allAnswers, filtered, s.section, s.type, null, null);
         sectionBody.appendChild(tr);
       });
       // --- Scores by Section per Teacher ---
@@ -2713,7 +2729,10 @@ async function loadDashboard() {
       } else {
         stEntries.forEach(s => {
           const tr = document.createElement('tr');
+          tr.style.cursor = 'pointer';
+          tr.title = 'Click to see question details';
           tr.innerHTML = '<td>' + escHtml(s.teacher) + '</td><td>' + escHtml(s.type) + '</td><td>' + escHtml(s.section) + '</td><td><span class="score-badge ' + scoreBadgeClass(s.pct) + '">' + s.pct + '%</span></td>';
+          tr.onclick = () => showSectionDrill(allAnswers, filtered, s.section, s.type, s.teacher, null);
           stBody.appendChild(tr);
         });
       }
@@ -2740,7 +2759,10 @@ async function loadDashboard() {
       } else {
         srEntries.forEach(s => {
           const tr = document.createElement('tr');
+          tr.style.cursor = 'pointer';
+          tr.title = 'Click to see question details';
           tr.innerHTML = '<td>' + escHtml(s.room) + '</td><td>' + escHtml(s.type) + '</td><td>' + escHtml(s.section) + '</td><td><span class="score-badge ' + scoreBadgeClass(s.pct) + '">' + s.pct + '%</span></td>';
+          tr.onclick = () => showSectionDrill(allAnswers, filtered, s.section, s.type, null, s.room);
           srBody.appendChild(tr);
         });
       }
@@ -3101,6 +3123,72 @@ async function loadDashboard() {
     hideSpinner();
     toast('Dashboard error: ' + err.message, 'error');
   }
+}
+
+function showSectionDrill(allAnswers, filtered, sectionName, auditType, teacher, room) {
+  // Build audit lookup for teacher/room filtering
+  const auditMap = {};
+  filtered.forEach(a => auditMap[a.id] = a);
+
+  // Filter answers to matching section + audit type + optional teacher/room
+  const relevantAnswers = allAnswers.filter(ans => {
+    if (ans.section_name !== sectionName) return false;
+    const audit = auditMap[ans.audit_id];
+    if (!audit) return false;
+    if (auditLabel(audit.audit_type) !== auditType) return false;
+    if (teacher && audit.teacher1 !== teacher && audit.teacher2 !== teacher) return false;
+    if (room && (audit.room || '-') !== room) return false;
+    return true;
+  });
+
+  // Group by item_id
+  const byItem = {};
+  relevantAnswers.forEach(ans => {
+    if (!byItem[ans.item_id]) byItem[ans.item_id] = { compliant: 0, nonCompliant: 0, na: 0, achieved: 0, max: 0 };
+    if (ans.answer === 'compliant') { byItem[ans.item_id].compliant++; byItem[ans.item_id].achieved += (ans.points || 0); byItem[ans.item_id].max += (ans.max_points || 0); }
+    else if (ans.answer === 'non-compliant') { byItem[ans.item_id].nonCompliant++; byItem[ans.item_id].max += (ans.max_points || 0); }
+    else if (ans.answer === 'na') byItem[ans.item_id].na++;
+  });
+
+  // Get question text from AUDITS definition
+  const auditDef = Object.values(AUDITS).find(a => a.label === auditType);
+  const questionText = {};
+  if (auditDef) {
+    auditDef.sections.forEach(sec => {
+      sec.items.forEach(item => { questionText[item.id] = item.text; });
+    });
+  }
+
+  // Set modal title
+  document.getElementById('drillTitle').textContent = sectionName + ' — ' + auditType;
+  let subtitle = '';
+  if (teacher) subtitle += 'Teacher: ' + teacher;
+  if (room) subtitle += (subtitle ? ' | ' : '') + 'Classroom: ' + room;
+  document.getElementById('drillSubtitle').textContent = subtitle;
+
+  // Build table
+  const tbody = document.getElementById('drillBody');
+  tbody.innerHTML = '';
+  const items = Object.keys(byItem).sort();
+  if (items.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-light)">No data</td></tr>';
+  } else {
+    items.forEach(itemId => {
+      const d = byItem[itemId];
+      const pct = d.max > 0 ? Math.round(d.achieved / d.max * 100) : null;
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td style="font-weight:600">' + escHtml(itemId) + '</td>' +
+        '<td style="font-size:.82rem">' + escHtml(questionText[itemId] || itemId) + '</td>' +
+        '<td style="text-align:center;color:var(--success)">' + d.compliant + '</td>' +
+        '<td style="text-align:center;color:var(--danger)">' + d.nonCompliant + '</td>' +
+        '<td style="text-align:center;color:var(--gray)">' + d.na + '</td>' +
+        '<td style="text-align:center">' + (pct !== null ? '<span class="score-badge ' + scoreBadgeClass(pct) + '">' + pct + '%</span>' : '-') + '</td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  document.getElementById('sectionDrillModal').style.display = 'block';
 }
 
 function destroyChart(key) {
