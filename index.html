@@ -2048,11 +2048,9 @@ async function loadAllAudits() {
 async function loadHistory() {
   showSpinner();
   try {
-    let query = sb.from('audits').select('*').order('audit_date', { ascending: false });
-
-    if (currentProfile.role !== 'admin') {
-      query = query.eq('user_id', currentUser.id);
-    }
+    let query = sb.from('audits').select('*')
+      .eq('user_id', currentUser.id)
+      .order('audit_date', { ascending: false });
 
     const typeFilter = document.getElementById('histFilterType').value;
     const fromFilter = document.getElementById('histFilterFrom').value;
