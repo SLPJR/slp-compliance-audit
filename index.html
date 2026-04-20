@@ -555,6 +555,7 @@ let currentPhotos = {};
 let photoTargetItem = null;
 let viewStack = ['login'];
 let detailAuditId = null;
+let detailReturnView = 'history';
 let dashCharts = {};
 let lookupClassrooms = [];
 let lookupInspectors = [];
@@ -1379,8 +1380,8 @@ function goBack() {
   const parts = hash.split('/');
   const base = parts[0];
   if (base === 'audit') navigate('select-audit');
-  else if (base === 'detail') navigate('history');
-  else if (['select-audit', 'history', 'dashboard', 'settings'].includes(base)) navigate('menu');
+  else if (base === 'detail') navigate(detailReturnView || 'history');
+  else if (['select-audit', 'history', 'dashboard', 'settings', 'all-audits'].includes(base)) navigate('menu');
   else navigate('menu');
 }
 
@@ -2033,7 +2034,7 @@ async function loadAllAudits() {
           '<td>' +
             '<button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); detailAuditId=\'' + a.id + '\'; exportAuditZip();">Download</button>' +
           '</td>';
-        tr.onclick = () => navigate('detail/' + a.id);
+        tr.onclick = () => { detailReturnView = 'all-audits'; navigate('detail/' + a.id); };
         body.appendChild(tr);
       });
     }
@@ -2073,7 +2074,7 @@ async function loadHistory() {
       empty.style.display = 'none';
       data.forEach(a => {
         const tr = document.createElement('tr');
-        tr.onclick = () => navigate('detail/' + a.id);
+        tr.onclick = () => { detailReturnView = 'history'; navigate('detail/' + a.id); };
         const pct = a.total_pct || 0;
         tr.innerHTML =
           '<td>' + formatDate(a.audit_date) + '</td>' +
