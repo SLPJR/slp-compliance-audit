@@ -3125,7 +3125,16 @@ async function loadDashboard() {
   }
 }
 
-function showSectionDrill(allAnswers, filtered, sectionName, auditType, teacher, room) {
+async function showSectionDrill(allAnswers, filtered, sectionName, auditType, teacher, room) {
+  // Show modal immediately with loading state
+  document.getElementById('drillTitle').textContent = sectionName + ' — ' + auditType;
+  let subtitle = '';
+  if (teacher) subtitle += 'Teacher: ' + teacher;
+  if (room) subtitle += (subtitle ? ' | ' : '') + 'Classroom: ' + room;
+  document.getElementById('drillSubtitle').textContent = subtitle;
+  document.getElementById('drillBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:20px">Loading...</td></tr>';
+  document.getElementById('sectionDrillModal').style.display = 'block';
+
   // Build audit lookup for teacher/room filtering
   const auditMap = {};
   filtered.forEach(a => auditMap[a.id] = a);
@@ -3141,14 +3150,34 @@ function showSectionDrill(allAnswers, filtered, sectionName, auditType, teacher,
     return true;
   });
 
+  // Get unique audit IDs for this section
+  const relevantAuditIds = [...new Set(relevantAnswers.map(a => a.audit_id))];
+
   // Group by item_id
   const byItem = {};
   relevantAnswers.forEach(ans => {
-    if (!byItem[ans.item_id]) byItem[ans.item_id] = { compliant: 0, nonCompliant: 0, na: 0, achieved: 0, max: 0 };
+    if (!byItem[ans.item_id]) byItem[ans.item_id] = { compliant: 0, nonCompliant: 0, na: 0, achieved: 0, max: 0, photos: [] };
     if (ans.answer === 'compliant') { byItem[ans.item_id].compliant++; byItem[ans.item_id].achieved += (ans.points || 0); byItem[ans.item_id].max += (ans.max_points || 0); }
     else if (ans.answer === 'non-compliant') { byItem[ans.item_id].nonCompliant++; byItem[ans.item_id].max += (ans.max_points || 0); }
     else if (ans.answer === 'na') byItem[ans.item_id].na++;
   });
+
+  // Fetch photos from Supabase Storage for each relevant audit
+  for (const auditId of relevantAuditIds) {
+    try {
+      const { data: files } = await sb.storage.from('audit-photos').list(auditId);
+      if (files && files.length > 0) {
+        for (const file of files) {
+          // Match file to item_id (format: itemId-with-dashes_index.jpg)
+          const itemId = file.name.split('_').slice(0, -1).join('_').replace(/-/g, '.');
+          if (byItem[itemId]) {
+            const { data: urlData } = await sb.storage.from('audit-photos').createSignedUrl(auditId + '/' + file.name, 3600);
+            if (urlData) byItem[itemId].photos.push({ url: urlData.signedUrl, auditId });
+          }
+        }
+      }
+    } catch (e) { console.warn('Photo fetch error:', e); }
+  }
 
   // Get question text from AUDITS definition
   const auditDef = Object.values(AUDITS).find(a => a.label === auditType);
@@ -3158,13 +3187,6 @@ function showSectionDrill(allAnswers, filtered, sectionName, auditType, teacher,
       sec.items.forEach(item => { questionText[item.id] = item.text; });
     });
   }
-
-  // Set modal title
-  document.getElementById('drillTitle').textContent = sectionName + ' — ' + auditType;
-  let subtitle = '';
-  if (teacher) subtitle += 'Teacher: ' + teacher;
-  if (room) subtitle += (subtitle ? ' | ' : '') + 'Classroom: ' + room;
-  document.getElementById('drillSubtitle').textContent = subtitle;
 
   // Build table
   const tbody = document.getElementById('drillBody');
@@ -3177,18 +3199,25 @@ function showSectionDrill(allAnswers, filtered, sectionName, auditType, teacher,
       const d = byItem[itemId];
       const pct = d.max > 0 ? Math.round(d.achieved / d.max * 100) : null;
       const tr = document.createElement('tr');
+      // Build photo thumbnails
+      let photoHtml = '';
+      if (d.photos.length > 0) {
+        photoHtml = '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">';
+        d.photos.forEach(p => {
+          photoHtml += '<img src="' + p.url + '" onclick="window.open(\'' + p.url + '\',\'_blank\')" style="max-width:80px;max-height:80px;border-radius:6px;border:1px solid #ddd;cursor:pointer;object-fit:cover">';
+        });
+        photoHtml += '</div>';
+      }
       tr.innerHTML =
-        '<td style="font-weight:600">' + escHtml(itemId) + '</td>' +
-        '<td style="font-size:.82rem">' + escHtml(questionText[itemId] || itemId) + '</td>' +
-        '<td style="text-align:center;color:var(--success)">' + d.compliant + '</td>' +
-        '<td style="text-align:center;color:var(--danger)">' + d.nonCompliant + '</td>' +
-        '<td style="text-align:center;color:var(--gray)">' + d.na + '</td>' +
-        '<td style="text-align:center">' + (pct !== null ? '<span class="score-badge ' + scoreBadgeClass(pct) + '">' + pct + '%</span>' : '-') + '</td>';
+        '<td style="font-weight:600;vertical-align:top">' + escHtml(itemId) + '</td>' +
+        '<td style="font-size:.82rem;vertical-align:top">' + escHtml(questionText[itemId] || itemId) + photoHtml + '</td>' +
+        '<td style="text-align:center;color:var(--success);vertical-align:top">' + d.compliant + '</td>' +
+        '<td style="text-align:center;color:var(--danger);vertical-align:top">' + d.nonCompliant + '</td>' +
+        '<td style="text-align:center;color:var(--gray);vertical-align:top">' + d.na + '</td>' +
+        '<td style="text-align:center;vertical-align:top">' + (pct !== null ? '<span class="score-badge ' + scoreBadgeClass(pct) + '">' + pct + '%</span>' : '-') + '</td>';
       tbody.appendChild(tr);
     });
   }
-
-  document.getElementById('sectionDrillModal').style.display = 'block';
 }
 
 function destroyChart(key) {
