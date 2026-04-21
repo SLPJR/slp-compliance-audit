@@ -91,8 +91,8 @@ input,select,textarea{font-family:inherit;font-size:1rem}
 .q-text{font-size:.9rem;flex:1;line-height:1.4}
 .q-weight{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;border-radius:50%;color:var(--white);font-size:.75rem;font-weight:700;flex-shrink:0}
 .q-weight.w1{background:var(--success)}
-.q-weight.w2{background:var(--warning)}
-.q-weight.w3{background:var(--danger)}
+.q-weight.w5{background:var(--warning)}
+.q-weight.w10{background:var(--danger)}
 .q-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
 .q-actions .answer-btn{padding:6px 14px;border:2px solid #ddd;border-radius:20px;font-size:.8rem;font-weight:600;background:var(--white);transition:all .15s}
 .q-actions .answer-btn.compliant.selected{background:var(--success);color:var(--white);border-color:var(--success)}
@@ -123,7 +123,7 @@ input,select,textarea{font-family:inherit;font-size:1rem}
 .ms-wrap{position:relative;flex:1;min-width:120px}
 .ms-toggle{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--white);cursor:pointer;font-size:.875rem;min-height:38px;user-select:none;gap:4px}
 .ms-toggle:hover{border-color:var(--primary)}
-.ms-dropdown{position:absolute;top:calc(100% + 2px);left:0;min-width:200px;z-index:600;background:var(--white);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.18);max-height:220px;overflow-y:auto;display:none}
+.ms-dropdown{position:absolute;top:calc(100% + 2px);left:0;min-width:200px;z-index:600;background:var(--white);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.18);max-height:220px;overflow-y:auto;overflow-x:hidden;display:none}
 .ms-dropdown.ms-open{display:block}
 .ms-option{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;font-size:.875rem;margin:0;white-space:nowrap}
 .ms-option:hover{background:var(--bg)}
@@ -704,12 +704,12 @@ const AUDITS = {
       {
         name: 'Section A - Program Operations & Licensing',
         items: [
-          { id: 'A1', text: 'Program plan is current, posted, and followed daily', weight: 3 },
-          { id: 'A2', text: 'Operational hours match the approved license', weight: 3 },
-          { id: 'A3', text: 'No unapproved ECS or outside programs operating in licensed space', weight: 3 },
-          { id: 'A4', text: 'English/Spanish language immersion strategies documented in the program plan', weight: 3 },
-          { id: 'A5', text: 'Children\'s bilingual (English/Spanish) progress monitored using age-appropriate observation tools', weight: 3 },
-          { id: 'A6', text: 'Licensing authority notified of any changes to the original application (staffing, program, capacity, etc.)', weight: 3 }
+          { id: 'A1', text: 'Program plan is current, posted, and followed daily', weight: 5 },
+          { id: 'A2', text: 'Operational hours match the approved license', weight: 5 },
+          { id: 'A3', text: 'No unapproved ECS or outside programs operating in licensed space', weight: 5 },
+          { id: 'A4', text: 'English/Spanish language immersion strategies documented in the program plan', weight: 5 },
+          { id: 'A5', text: 'Children\'s bilingual (English/Spanish) progress monitored using age-appropriate observation tools', weight: 5 },
+          { id: 'A6', text: 'Licensing authority notified of any changes to the original application (staffing, program, capacity, etc.)', weight: 5 }
         ]
       },
       {
@@ -717,11 +717,11 @@ const AUDITS = {
         items: [
           { id: 'B1', text: 'At least 1 in 3 staff are ECE Level 2+ between 8:30 AM and 4:30 PM', weight: 10 },
           { id: 'B2', text: 'Supervisor holds ECE Level 3 or a valid exemption is posted and current', weight: 10 },
-          { id: 'B3', text: 'Staff trained in child observation and documentation practices', weight: 3 },
-          { id: 'B4', text: 'Educators participate in at least one professional development activity per quarter', weight: 3 },
-          { id: 'B5', text: 'New staff receive formal onboarding and mentorship in the first 30 days', weight: 3 },
+          { id: 'B3', text: 'Staff trained in child observation and documentation practices', weight: 5 },
+          { id: 'B4', text: 'Educators participate in at least one professional development activity per quarter', weight: 5 },
+          { id: 'B5', text: 'New staff receive formal onboarding and mentorship in the first 30 days', weight: 5 },
           { id: 'B6', text: 'Current First Aid certificate on file for all staff', weight: 10 },
-          { id: 'B7', text: 'ECE certification copy on file for all staff (Level 1, 2, or 3)', weight: 3 },
+          { id: 'B7', text: 'ECE certification copy on file for all staff (Level 1, 2, or 3)', weight: 5 },
           { id: 'B8', text: 'CRC (Criminal Record Check) & VSS (Vulnerable Sector Search) on file and valid for all staff, including new hires', weight: 10 }
         ]
       },
@@ -729,7 +729,7 @@ const AUDITS = {
         name: 'Section C - Posting & Regulatory Documentation',
         items: [
           { id: 'C1', text: 'Fire and health inspection certificates posted and current', weight: 1 },
-          { id: 'C2', text: 'Childcare license posted in a visible location', weight: 3 },
+          { id: 'C2', text: 'Childcare license posted in a visible location', weight: 5 },
           { id: 'C3', text: 'Most recent licensing inspection report posted', weight: 1 },
           { id: 'C4', text: 'Any exemptions or probationary license posted (if applicable)', weight: 1 },
           { id: 'C5', text: 'Any variance notices posted (if applicable)', weight: 1 },
@@ -741,9 +741,9 @@ const AUDITS = {
       {
         name: 'Section D - Nutrition & Menu Oversight',
         items: [
-          { id: 'D1', text: 'Meals and snacks meet Canada Food Guide / Alberta Health Guide requirements', weight: 3 },
+          { id: 'D1', text: 'Meals and snacks meet Canada Food Guide / Alberta Health Guide requirements', weight: 5 },
           { id: 'D2', text: 'Menu posted in a visible location in each room', weight: 1 },
-          { id: 'D3', text: 'Parents informed about foods and drinks served; allergy-related substitutions communicated', weight: 3 }
+          { id: 'D3', text: 'Parents informed about foods and drinks served; allergy-related substitutions communicated', weight: 5 }
         ]
       },
       {
@@ -754,44 +754,44 @@ const AUDITS = {
           { id: 'F3', text: 'All equipment openings checked: no entrapment hazards in the 9-23 cm dangerous zone', weight: 10 },
           { id: 'F4', text: 'No strangulation hazards present: no drawstrings, loose ropes, or protrusions that catch clothing', weight: 10 },
           { id: 'F5', text: 'Perimeter fence minimum 1.2 m high with childproof self-latching, outward-opening gate', weight: 10 },
-          { id: 'F6', text: 'Gate latch inaccessible to children; gate inspected and functional before each use', weight: 3 },
+          { id: 'F6', text: 'Gate latch inaccessible to children; gate inspected and functional before each use', weight: 5 },
           { id: 'F7', text: 'All equipment anchored securely; no exposed bolt ends, sharp edges, or splintered wood', weight: 10 },
-          { id: 'F8', text: 'Platforms above 75 cm have appropriate guardrails and protective barriers', weight: 3 },
+          { id: 'F8', text: 'Platforms above 75 cm have appropriate guardrails and protective barriers', weight: 5 },
           { id: 'F9', text: 'Sun protection available: shade structure or sun canopy in place; hats worn on UV index 3+', weight: 1 },
-          { id: 'F10', text: 'No toxic plants identified within or adjacent to the play space', weight: 3 },
-          { id: 'F11', text: 'No pesticides or chemicals applied to playground area; application records maintained', weight: 3 },
+          { id: 'F10', text: 'No toxic plants identified within or adjacent to the play space', weight: 5 },
+          { id: 'F11', text: 'No pesticides or chemicals applied to playground area; application records maintained', weight: 5 },
           { id: 'F12', text: 'Portable first aid kit present and fully stocked on the playground at all times', weight: 10 },
-          { id: 'F13', text: 'No standing water, ice, or drainage issues creating slip or entrapment hazards', weight: 3 },
-          { id: 'F14', text: 'Outdoor water play equipment cleaned and sanitized after each use', weight: 3 },
+          { id: 'F13', text: 'No standing water, ice, or drainage issues creating slip or entrapment hazards', weight: 5 },
+          { id: 'F14', text: 'Outdoor water play equipment cleaned and sanitized after each use', weight: 5 },
           { id: 'F15', text: 'Children visible at all times; no blind spots in outdoor area layout', weight: 10 },
-          { id: 'F16', text: 'Age-appropriate zone separation: infant/toddler play area separate from school-age equipment', weight: 3 }
+          { id: 'F16', text: 'Age-appropriate zone separation: infant/toddler play area separate from school-age equipment', weight: 5 }
         ]
       },
       {
         name: 'Section G - Environmental & Facility Health',
         items: [
           { id: 'G1', text: 'Bathrooms free of persistent odors; ventilation functioning correctly', weight: 1 },
-          { id: 'G2', text: 'Rooms well ventilated: windows operable or HVAC functioning and regularly maintained', weight: 3 },
-          { id: 'G3', text: 'Outdoor water play equipment drained and sanitized after each use', weight: 3 },
-          { id: 'G4', text: 'Building structure in good condition: no visible damage, moisture staining, or structural hazards', weight: 3 },
-          { id: 'G5', text: 'All furnishings in good condition: no broken pieces, sharp edges, or unstable items', weight: 3 },
-          { id: 'G6', text: 'Toys and equipment in good condition: no broken parts, sharp edges, or choking hazards', weight: 3 },
-          { id: 'G7', text: 'Cleaning and disinfecting products are Health Canada approved (DIN-registered) to effectively kill germs', weight: 3 },
+          { id: 'G2', text: 'Rooms well ventilated: windows operable or HVAC functioning and regularly maintained', weight: 5 },
+          { id: 'G3', text: 'Outdoor water play equipment drained and sanitized after each use', weight: 5 },
+          { id: 'G4', text: 'Building structure in good condition: no visible damage, moisture staining, or structural hazards', weight: 5 },
+          { id: 'G5', text: 'All furnishings in good condition: no broken pieces, sharp edges, or unstable items', weight: 5 },
+          { id: 'G6', text: 'Toys and equipment in good condition: no broken parts, sharp edges, or choking hazards', weight: 5 },
+          { id: 'G7', text: 'Cleaning and disinfecting products are Health Canada approved (DIN-registered) to effectively kill germs', weight: 5 },
           { id: 'G8', text: 'Dangerous objects, liquids, and cleaning products stored securely out of children\'s reach at all times', weight: 10 },
           { id: 'G9', text: 'Curtain and blind cords out of reach of children; looped cords tied, cut short, or secured with a cleat', weight: 10 },
-          { id: 'G10', text: 'Sleeping/rest equipment (cribs, cots, mats) in safe condition and appropriate for child\'s age and development', weight: 3 }
+          { id: 'G10', text: 'Sleeping/rest equipment (cribs, cots, mats) in safe condition and appropriate for child\'s age and development', weight: 5 }
         ]
       },
       {
         name: 'Section H - Illness Response & Sick Child Protocols',
         items: [
-          { id: 'H1', text: 'Sick child policy posted and communicated to all families at enrollment', weight: 3 }
+          { id: 'H1', text: 'Sick child policy posted and communicated to all families at enrollment', weight: 5 }
         ]
       },
       {
         name: 'Section I - Outbreak Response & AHS Reporting',
         items: [
-          { id: 'I1', text: 'Written outbreak response plan on file and accessible to all staff', weight: 3 },
+          { id: 'I1', text: 'Written outbreak response plan on file and accessible to all staff', weight: 5 },
           { id: 'I2', text: 'AHS notified when 2+ children/staff show same symptoms within 72 hours', weight: 10 },
           { id: 'I3', text: 'Parents notified of suspected or confirmed outbreak via written notice', weight: 10 },
           { id: 'I4', text: 'Symptomatic staff sent home; replacement arranged to maintain ratios', weight: 10 },
@@ -802,9 +802,9 @@ const AUDITS = {
         name: 'Section J - Family Relations & Community Support',
         items: [
           { id: 'J1', text: 'Parent orientation held for all new families within the first two weeks of enrollment', weight: 1 },
-          { id: 'J2', text: 'Family handbook current, distributed to all families, and signed/acknowledged on file', weight: 3 },
+          { id: 'J2', text: 'Family handbook current, distributed to all families, and signed/acknowledged on file', weight: 5 },
           { id: 'J3', text: 'Family feedback mechanisms in place: surveys, suggestion box, formal complaint process', weight: 1 },
-          { id: 'J4', text: 'Community partnerships documented: speech-language, OT, family resource programs, etc.', weight: 3 },
+          { id: 'J4', text: 'Community partnerships documented: speech-language, OT, family resource programs, etc.', weight: 5 },
           { id: 'J5', text: 'Developmental concerns referred to appropriate external supports with family consent', weight: 10 }
         ]
       },
@@ -815,20 +815,20 @@ const AUDITS = {
           { id: 'K2', text: 'Emergency exits clear, unobstructed, and accessible at all times', weight: 10 },
           { id: 'K3', text: 'Fire extinguisher inspected, tagged, and not expired', weight: 10 },
           { id: 'K4', text: 'First aid kit inspected, fully restocked, and accessible to all staff', weight: 10 },
-          { id: 'K5', text: 'Emergency evacuation supplies inspected and restocked', weight: 3 },
-          { id: 'K6', text: 'Fire drill practiced and documented every month', weight: 3 },
-          { id: 'K7', text: 'Elevator/lift maintenance current; inspection certificate on file (if applicable)', weight: 3 }
+          { id: 'K5', text: 'Emergency evacuation supplies inspected and restocked', weight: 5 },
+          { id: 'K6', text: 'Fire drill practiced and documented every month', weight: 5 },
+          { id: 'K7', text: 'Elevator/lift maintenance current; inspection certificate on file (if applicable)', weight: 5 }
         ]
       },
       {
         name: 'Section L - Children\'s Records & Supervision',
         items: [
-          { id: 'L1', text: 'Children\'s records complete and up to date: emergency contacts, health info, and consents', weight: 3 },
-          { id: 'L2', text: 'Children\'s arrival and departure times recorded accurately every day', weight: 3 },
-          { id: 'L3', text: 'Incident, illness, and unexpected event log maintained and up to date', weight: 3 },
+          { id: 'L1', text: 'Children\'s records complete and up to date: emergency contacts, health info, and consents', weight: 5 },
+          { id: 'L2', text: 'Children\'s arrival and departure times recorded accurately every day', weight: 5 },
+          { id: 'L3', text: 'Incident, illness, and unexpected event log maintained and up to date', weight: 5 },
           { id: 'L4', text: 'Correct number of children licensed for each room; no overcapacity at any time', weight: 10 },
           { id: 'L5', text: 'Correct ages of children in each approved licensed room', weight: 10 },
-          { id: 'L6', text: 'Food not used as reward or punishment at any time', weight: 3 },
+          { id: 'L6', text: 'Food not used as reward or punishment at any time', weight: 5 },
           { id: 'L7', text: 'No child neglect observed; all staff understand and fulfill mandatory reporting obligations', weight: 10 }
         ]
       },
@@ -843,12 +843,12 @@ const AUDITS = {
       {
         name: 'Section N - HR & Administrative Records',
         items: [
-          { id: 'N1', text: 'Staff files current, complete, and available for review', weight: 3 },
-          { id: 'N2', text: 'Staff daily attendance recorded in scheduling system or Excel sheet', weight: 3 },
-          { id: 'N3', text: 'Staff and children attendance records scanned and uploaded to Dropbox', weight: 3 },
+          { id: 'N1', text: 'Staff files current, complete, and available for review', weight: 5 },
+          { id: 'N2', text: 'Staff daily attendance recorded in scheduling system or Excel sheet', weight: 5 },
+          { id: 'N3', text: 'Staff and children attendance records scanned and uploaded to Dropbox', weight: 5 },
           { id: 'N4', text: 'Staff paystubs prepared and distributed on schedule', weight: 1 },
           { id: 'N5', text: 'Banking/direct deposit information on file for all staff', weight: 1 },
-          { id: 'N6', text: 'Any changes to staff ECE/ECEA certification status reported to the licensing authority', weight: 3 }
+          { id: 'N6', text: 'Any changes to staff ECE/ECEA certification status reported to the licensing authority', weight: 5 }
         ]
       },
       {
@@ -856,8 +856,8 @@ const AUDITS = {
         items: [
           { id: 'O1', text: 'PUF (Program Unit Funding) session notes up to date and filed', weight: 10 },
           { id: 'O2', text: 'IPP (Individualized Program Plan) documents current with updates from OT, SLT, and Kinder teacher', weight: 10 },
-          { id: 'O3', text: 'IPP distributed to all involved parties for signature following team meeting', weight: 3 },
-          { id: 'O4', text: 'Therapy session notes shared with Educational Assistants (EAs) in a timely manner', weight: 3 }
+          { id: 'O3', text: 'IPP distributed to all involved parties for signature following team meeting', weight: 5 },
+          { id: 'O4', text: 'Therapy session notes shared with Educational Assistants (EAs) in a timely manner', weight: 5 }
         ]
       }
     ]
@@ -882,18 +882,18 @@ const AUDITS = {
       {
         name: 'Section 3 - Staff Records',
         items: [
-          { id: '3.1', text: 'Daily staff attendance complete: arrival, departure, and hours providing care', weight: 3 },
+          { id: '3.1', text: 'Daily staff attendance complete: arrival, departure, and hours providing care', weight: 5 },
           { id: '3.2', text: 'Criminal Record Check (CRC) & Vulnerable Sector Search (VSS) on file within 6 months of hire; renewed every 3 years', weight: 10 },
           { id: '3.3', text: 'Is the current First Aid certificate for the teachers in this classroom on file and up to date?', weight: 10 },
-          { id: '3.4', text: 'Is there an ECE certification copy on file for the teachers in this classroom?', weight: 3 }
+          { id: '3.4', text: 'Is there an ECE certification copy on file for the teachers in this classroom?', weight: 5 }
         ]
       },
       {
         name: 'Section 4 - Children\'s Records',
         items: [
-          { id: '4.1', text: 'Full child file on record, including DOB, parent contacts, emergency contacts, health info, and consents', weight: 3 },
-          { id: '4.2', text: 'Daily child attendance records complete: arrival and departure times', weight: 3 },
-          { id: '4.3', text: 'Incident reports complete, signed, and shared with parents and licensing as required', weight: 3 },
+          { id: '4.1', text: 'Full child file on record, including DOB, parent contacts, emergency contacts, health info, and consents', weight: 5 },
+          { id: '4.2', text: 'Daily child attendance records complete: arrival and departure times', weight: 5 },
+          { id: '4.3', text: 'Incident reports complete, signed, and shared with parents and licensing as required', weight: 5 },
           { id: '4.4', text: 'Portable emergency records (binder/backpack) current and ready for off-site use', weight: 10 }
         ]
       },
@@ -902,16 +902,16 @@ const AUDITS = {
         items: [
           { id: '5.1', text: 'Sufficient toys, books, art, and sensory materials available for all age groups', weight: 1 },
           { id: '5.2', text: 'Materials complete and not broken (puzzles, play sets, books)', weight: 1 },
-          { id: '5.3', text: 'Tables and chairs available for every child in each room', weight: 3 },
-          { id: '5.4', text: 'Infant areas free from large equipment or strollers blocking play space', weight: 3 },
-          { id: '5.5', text: 'All furnishings safe, age-appropriate, and in good repair', weight: 3 },
+          { id: '5.3', text: 'Tables and chairs available for every child in each room', weight: 5 },
+          { id: '5.4', text: 'Infant areas free from large equipment or strollers blocking play space', weight: 5 },
+          { id: '5.5', text: 'All furnishings safe, age-appropriate, and in good repair', weight: 5 },
           { id: '5.6', text: 'Selection of toys available for free play in each room', weight: 1 },
           { id: '5.7', text: 'All electronic/musical toys equipped with working batteries for children\'s use', weight: 1 },
           { id: '5.8', text: 'Variety of dress-up/dressing clothes available for imaginative play', weight: 1 },
           { id: '5.9', text: 'Puzzles sufficiently provided, visibly displayed, and all puzzle pieces complete and accounted for', weight: 1 },
           { id: '5.10', text: 'Mirrors present in rooms that have dressing clothes available', weight: 1 },
           { id: '5.11', text: 'Play centres complete with necessary accessories (handyman, kitchen stations, etc.)', weight: 1 },
-          { id: '5.12', text: 'Sensory activities and materials accessible to all children', weight: 3 },
+          { id: '5.12', text: 'Sensory activities and materials accessible to all children', weight: 5 },
           { id: '5.13', text: 'Variety of manipulatives available for developmental play', weight: 1 },
           { id: '5.14', text: 'Adequate supply of arts and craft materials available for creative activities', weight: 1 },
           { id: '5.15', text: 'Arts and crafts continuously accessible for children throughout the day', weight: 1 }
@@ -920,9 +920,9 @@ const AUDITS = {
       {
         name: 'Section 6 - Health & Illness Management',
         items: [
-          { id: '6.1', text: 'All children\'s food and bottles labeled with child\'s name', weight: 3 },
-          { id: '6.2', text: 'Children seated while eating or drinking', weight: 3 },
-          { id: '6.3', text: 'No drinking during nap/rest time', weight: 3 },
+          { id: '6.1', text: 'All children\'s food and bottles labeled with child\'s name', weight: 5 },
+          { id: '6.2', text: 'Children seated while eating or drinking', weight: 5 },
+          { id: '6.3', text: 'No drinking during nap/rest time', weight: 5 },
           { id: '6.4', text: 'Sick children are separated and sent home promptly', weight: 10 },
           { id: '6.5', text: 'Illness return policy enforced: child symptom-free 24 hrs before returning to care', weight: 10 },
           { id: '6.6', text: 'Allergy lists current, posted in rooms, and shared with all staff', weight: 10 }
@@ -933,7 +933,7 @@ const AUDITS = {
         items: [
           { id: '7.1', text: 'Written parental consent obtained for each medication to be administered', weight: 10 },
           { id: '7.2', text: 'Medication stored in original, labeled container', weight: 10 },
-          { id: '7.3', text: 'Medication log complete: child name, dose, time, staff initials', weight: 3 },
+          { id: '7.3', text: 'Medication log complete: child name, dose, time, staff initials', weight: 5 },
           { id: '7.4', text: 'Emergency medications (EpiPens, inhalers) stored safely and accessibly', weight: 10 },
           { id: '7.5', text: 'ASK TEACHER: \'What do you do immediately after administering an EpiPen?\' - Correct answer must include: (1) call 911 immediately, and (2) notify parents right away. Mark Compliant only if teacher states BOTH steps unprompted.', weight: 10 }
         ]
@@ -943,22 +943,22 @@ const AUDITS = {
         items: [
           { id: '8.1', text: 'Line-of-sight supervision maintained at all times; no child left unattended', weight: 10 },
           { id: '8.2', text: 'Prohibited practices not used: no physical punishment, restraint, or confinement as discipline', weight: 10 },
-          { id: '8.3', text: 'Infants and toddlers are placed in safe, appropriate environments (e.g., cribs for sleep) and are not confined in equipment beyond immediate care needs or in a way that restricts their movement', weight: 3 },
+          { id: '8.3', text: 'Infants and toddlers are placed in safe, appropriate environments (e.g., cribs for sleep) and are not confined in equipment beyond immediate care needs or in a way that restricts their movement', weight: 5 },
           { id: '8.4', text: 'Active supervision maintained during all transitions (washroom runs, outdoor, hallways)', weight: 10 },
           { id: '8.5', text: 'Inspect room and equipment for sharp edges, broken parts, or hazardous substances', weight: 10 },
-          { id: '8.6', text: 'Music (if played) kept at a low volume to support effective supervision and communication', weight: 3 },
-          { id: '8.7', text: 'Sufficient natural or artificial lighting in place to ensure child safety and enable supervision', weight: 3 },
+          { id: '8.6', text: 'Music (if played) kept at a low volume to support effective supervision and communication', weight: 5 },
+          { id: '8.7', text: 'Sufficient natural or artificial lighting in place to ensure child safety and enable supervision', weight: 5 },
           { id: '8.8', text: 'Blankets, stuffed toys, bumper pads, and loose objects removed from cribs of infants under 12 months', weight: 10 }
         ]
       },
       {
         name: 'Section 9 - Emergency & Safety',
         items: [
-          { id: '9.1', text: 'Emergency contacts posted: 911, Poison Control, AHS', weight: 3 },
-          { id: '9.2', text: 'Evacuation plan posted and visible from outside each room', weight: 3 },
+          { id: '9.1', text: 'Emergency contacts posted: 911, Poison Control, AHS', weight: 5 },
+          { id: '9.2', text: 'Evacuation plan posted and visible from outside each room', weight: 5 },
           { id: '9.3', text: 'Portable records accompany children on all outings and evacuations', weight: 10 },
           { id: '9.4', text: 'No smoking or vaping on premises or during hours of care', weight: 10 },
-          { id: '9.5', text: 'Daily safety checks complete: chemicals secured, toys safe, hazards noted', weight: 3 }
+          { id: '9.5', text: 'Daily safety checks complete: chemicals secured, toys safe, hazards noted', weight: 5 }
         ]
       }
     ]
@@ -969,28 +969,28 @@ const AUDITS = {
       {
         name: 'Section A - Hand Hygiene',
         items: [
-          { id: 'A1.1', text: 'Handwashing sinks stocked with liquid soap and paper towels in all required areas', weight: 3 },
+          { id: 'A1.1', text: 'Handwashing sinks stocked with liquid soap and paper towels in all required areas', weight: 5 },
           { id: 'A1.2', text: 'Staff and children wash hands: before eating, after diapering, after outdoor play, after coughing/sneezing, when visibly soiled', weight: 10 },
-          { id: 'A1.3', text: 'Hand sanitizer NOT used as substitute for handwashing during diapering or food prep', weight: 3 },
-          { id: 'A1.4', text: 'Staff model 20-second handwashing; assist children; use paper towel to turn off taps/open doors', weight: 3 },
+          { id: 'A1.3', text: 'Hand sanitizer NOT used as substitute for handwashing during diapering or food prep', weight: 5 },
+          { id: 'A1.4', text: 'Staff model 20-second handwashing; assist children; use paper towel to turn off taps/open doors', weight: 5 },
           { id: 'A1.5', text: 'Handwashing posters posted at child height near sinks', weight: 1 }
         ]
       },
       {
         name: 'Section B - Cleaning & Disinfection',
         items: [
-          { id: 'B2.1', text: 'Daily cleaning schedule is posted and followed', weight: 3 },
-          { id: 'B2.2', text: 'Surfaces cleaned first, then disinfected (correct two-step order observed)', weight: 3 },
-          { id: 'B2.3', text: 'High-touch surfaces cleaned daily and when visibly soiled', weight: 3 },
+          { id: 'B2.1', text: 'Daily cleaning schedule is posted and followed', weight: 5 },
+          { id: 'B2.2', text: 'Surfaces cleaned first, then disinfected (correct two-step order observed)', weight: 5 },
+          { id: 'B2.3', text: 'High-touch surfaces cleaned daily and when visibly soiled', weight: 5 },
           { id: 'B2.4', text: 'Only Health Canada-approved disinfectants, PPM posted', weight: 10 },
           { id: 'B2.5', text: 'Toys and equipment cleaned regularly; mouthed toys cleaned and sanitized after each use', weight: 10 },
-          { id: 'B2.6', text: 'Fabric items laundered frequently: bedding, costumes, stuffies, dress-up clothes', weight: 3 },
-          { id: 'B2.7', text: 'Separate cloths and mops used for bathrooms vs. classrooms/kitchen', weight: 3 },
+          { id: 'B2.6', text: 'Fabric items laundered frequently: bedding, costumes, stuffies, dress-up clothes', weight: 5 },
+          { id: 'B2.7', text: 'Separate cloths and mops used for bathrooms vs. classrooms/kitchen', weight: 5 },
           { id: 'B2.8', text: 'Cleaning supplies stored safely and locked out of reach of children', weight: 10 },
-          { id: 'B2.9', text: 'Each child\'s bedding stored separately inside their own labeled bag', weight: 3 },
-          { id: 'B2.10', text: 'Soiled and clean laundry separated at all times', weight: 3 },
+          { id: 'B2.9', text: 'Each child\'s bedding stored separately inside their own labeled bag', weight: 5 },
+          { id: 'B2.10', text: 'Soiled and clean laundry separated at all times', weight: 5 },
           { id: 'B2.11', text: 'Sufficient toilet paper and paper towels available in all washrooms', weight: 1 },
-          { id: 'B2.12', text: 'Sanitizer solution labeled with date and changed weekly (not expired)', weight: 3 }
+          { id: 'B2.12', text: 'Sanitizer solution labeled with date and changed weekly (not expired)', weight: 5 }
         ]
       },
       {
@@ -998,33 +998,33 @@ const AUDITS = {
         items: [
           { id: 'C3.1', text: 'Full diapering procedure followed for every diaper change', weight: 10 },
           { id: 'C3.2', text: 'Diapering area cleaned and disinfected after every change', weight: 10 },
-          { id: 'C3.3', text: 'Soiled diapers and wipes disposed of properly (sealed bag or lidded bin)', weight: 3 },
+          { id: 'C3.3', text: 'Soiled diapers and wipes disposed of properly (sealed bag or lidded bin)', weight: 5 },
           { id: 'C3.4', text: 'Child never left unattended on the diaper change table', weight: 10 },
           { id: 'C3.5', text: 'Diapering takes place only in designated area - never near food prep', weight: 10 },
-          { id: 'C3.6', text: 'Waterproof, cleanable surface with safety belt (diaper pad) used', weight: 3 },
+          { id: 'C3.6', text: 'Waterproof, cleanable surface with safety belt (diaper pad) used', weight: 5 },
           { id: 'C3.7', text: 'Hands washed before and after each diaper change (staff and child)', weight: 10 },
-          { id: 'C3.8', text: 'Diaper sanitizer solution is current (not expired)', weight: 3 },
-          { id: 'C3.9', text: 'Soiled diapers disposed in hands-free lidded bin; bin emptied daily', weight: 3 },
-          { id: 'C3.10', text: 'Bedding properly stored: blankets not touching pillows; pillows stored in individual labeled plastic bags', weight: 3 }
+          { id: 'C3.8', text: 'Diaper sanitizer solution is current (not expired)', weight: 5 },
+          { id: 'C3.9', text: 'Soiled diapers disposed in hands-free lidded bin; bin emptied daily', weight: 5 },
+          { id: 'C3.10', text: 'Bedding properly stored: blankets not touching pillows; pillows stored in individual labeled plastic bags', weight: 5 }
         ]
       },
       {
         name: 'Section D - Food Preparation & Storage',
         items: [
           { id: 'D4.1', text: 'Food prep area completely separated from diapering area at all times', weight: 10 },
-          { id: 'D4.2', text: 'Food contacts only clean trays or plates - not raw counters or other surfaces', weight: 3 },
-          { id: 'D4.3', text: 'Cupboards are clean, organized, and equipped with child-safety locks', weight: 3 },
+          { id: 'D4.2', text: 'Food contacts only clean trays or plates - not raw counters or other surfaces', weight: 5 },
+          { id: 'D4.3', text: 'Cupboards are clean, organized, and equipped with child-safety locks', weight: 5 },
           { id: 'D4.4', text: 'Allergy lists posted; no food sharing between children; infant bottles labeled', weight: 10 }
         ]
       },
       {
         name: 'Section E - Toileting & Bathroom Hygiene',
         items: [
-          { id: 'E5.1', text: 'Toilets and potty chairs cleaned and disinfected daily and when soiled', weight: 3 },
-          { id: 'E5.2', text: 'Potties emptied into toilet and sanitized after each use', weight: 3 },
-          { id: 'E5.3', text: 'Bathroom sinks clean; liquid soap and paper towels always stocked', weight: 3 },
+          { id: 'E5.1', text: 'Toilets and potty chairs cleaned and disinfected daily and when soiled', weight: 5 },
+          { id: 'E5.2', text: 'Potties emptied into toilet and sanitized after each use', weight: 5 },
+          { id: 'E5.3', text: 'Bathroom sinks clean; liquid soap and paper towels always stocked', weight: 5 },
           { id: 'E5.4', text: 'Toilet paper and waste bins always available in washrooms', weight: 1 },
-          { id: 'E5.5', text: 'Sufficient toilets/sinks per child ratios; step stools provided if needed', weight: 3 }
+          { id: 'E5.5', text: 'Sufficient toilets/sinks per child ratios; step stools provided if needed', weight: 5 }
         ]
       },
       {
@@ -1033,9 +1033,9 @@ const AUDITS = {
           { id: 'F6.1', text: 'Ill children separated immediately upon symptom identification', weight: 10 },
           { id: 'F6.2', text: 'Staff recognize exclusion symptoms: fever 38\u00B0C, vomiting, diarrhea, rash, eye discharge', weight: 10 },
           { id: 'F6.3', text: 'Parents contacted promptly when child shows illness symptoms; pickup within 1 hour', weight: 10 },
-          { id: 'F6.4', text: 'Ill children supervised in a designated, comfortable waiting area', weight: 3 },
+          { id: 'F6.4', text: 'Ill children supervised in a designated, comfortable waiting area', weight: 5 },
           { id: 'F6.5', text: 'Return-to-care criteria enforced: child symptom-free 24 hours before return', weight: 10 },
-          { id: 'F6.6', text: 'Illness log maintained: child name, symptoms, date/time, parent notified, return date', weight: 3 },
+          { id: 'F6.6', text: 'Illness log maintained: child name, symptoms, date/time, parent notified, return date', weight: 5 },
           { id: 'F6.7', text: 'AHS notified of reportable illnesses as required by Public Health Act', weight: 10 }
         ]
       },
@@ -1043,7 +1043,7 @@ const AUDITS = {
         name: 'Section G - Outbreak Response Protocol',
         items: [
           { id: 'G7.1', text: 'Enhanced cleaning and disinfection schedule implemented immediately during outbreak', weight: 10 },
-          { id: 'G7.2', text: 'Illness log updated with all affected children and staff during outbreak', weight: 3 }
+          { id: 'G7.2', text: 'Illness log updated with all affected children and staff during outbreak', weight: 5 }
         ]
       },
       {
@@ -1051,10 +1051,10 @@ const AUDITS = {
         items: [
           { id: 'H8.1', text: 'Hot water functional at all classroom and washroom sinks', weight: 1 },
           { id: 'H8.2', text: 'Water temperature at children\'s sinks not scalding (max 49\u00B0C / 120\u00B0F)', weight: 10 },
-          { id: 'H8.3', text: 'No broken toys or materials with sharp or hazardous edges present in any room', weight: 3 },
-          { id: 'H8.4', text: 'Table wiping cloths labeled for table use only; soiled cloths stored in separate container', weight: 3 },
+          { id: 'H8.3', text: 'No broken toys or materials with sharp or hazardous edges present in any room', weight: 5 },
+          { id: 'H8.4', text: 'Table wiping cloths labeled for table use only; soiled cloths stored in separate container', weight: 5 },
           { id: 'H8.5', text: 'No visible mold, moisture damage, or pest evidence in any room or storage area', weight: 10 },
-          { id: 'H8.6', text: 'Humidifiers (if used) cleaned and disinfected weekly to prevent Legionella risk', weight: 3 },
+          { id: 'H8.6', text: 'Humidifiers (if used) cleaned and disinfected weekly to prevent Legionella risk', weight: 5 },
           { id: 'H8.7', text: 'Wall condition monitored: appropriate tape used on peeling wall areas; damage documented and reported for repair', weight: 1 }
         ]
       }
@@ -1066,31 +1066,31 @@ const AUDITS = {
       {
         name: 'Section 1 - Food Handling & Hygiene',
         items: [
-          { id: 'K1.1', text: 'Kitchen staff follow the posted monthly menu', weight: 3 },
+          { id: 'K1.1', text: 'Kitchen staff follow the posted monthly menu', weight: 5 },
           { id: 'K1.2', text: 'No unsafe home-prepared foods used (e.g., home-canned low-acid foods)', weight: 10 },
           { id: 'K1.3', text: 'All food from approved sources; prepared on-site in a permitted kitchen', weight: 10 },
-          { id: 'K1.4', text: 'Sink stocked with liquid soap and single-use paper towels at all times', weight: 3 },
+          { id: 'K1.4', text: 'Sink stocked with liquid soap and single-use paper towels at all times', weight: 5 },
           { id: 'K1.5', text: 'Food handlers wash hands between tasks; hair tied back; clean attire; no ill staff in food prep', weight: 10 },
           { id: 'K1.6', text: 'Handwashing posters posted at adult eye-level in kitchen', weight: 1 },
-          { id: 'K1.7', text: 'Only single-use tasting utensils used (no double-dipping)', weight: 3 }
+          { id: 'K1.7', text: 'Only single-use tasting utensils used (no double-dipping)', weight: 5 }
         ]
       },
       {
         name: 'Section 2 - Kitchen Sanitation',
         items: [
-          { id: 'K2.1', text: 'Counters and cutting boards smooth and cleanable; sanitized before and after food prep', weight: 3 },
+          { id: 'K2.1', text: 'Counters and cutting boards smooth and cleanable; sanitized before and after food prep', weight: 5 },
           { id: 'K2.2', text: 'Dishes and utensils washed, rinsed, and sanitized; air-dried before storage', weight: 10 },
           { id: 'K2.3', text: 'Cupboards and utensil storage are clean and organized', weight: 1 },
-          { id: 'K2.4', text: 'Oven, stove, and range hood are clean and grease-free', weight: 3 },
+          { id: 'K2.4', text: 'Oven, stove, and range hood are clean and grease-free', weight: 5 },
           { id: 'K2.5', text: 'General kitchen area is clean and organized at all times', weight: 1 },
-          { id: 'K2.6', text: 'Refrigerator interior is clean: no spills, expired items, or odors; shelves wiped and organized', weight: 3 }
+          { id: 'K2.6', text: 'Refrigerator interior is clean: no spills, expired items, or odors; shelves wiped and organized', weight: 5 }
         ]
       },
       {
         name: 'Section 3 - Serving & Allergy Safety',
         items: [
-          { id: 'K3.1', text: 'Surfaces sanitized immediately before serving food', weight: 3 },
-          { id: 'K3.2', text: 'No sharing of utensils or cups between children', weight: 3 },
+          { id: 'K3.1', text: 'Surfaces sanitized immediately before serving food', weight: 5 },
+          { id: 'K3.2', text: 'No sharing of utensils or cups between children', weight: 5 },
           { id: 'K3.3', text: 'Allergy lists current and posted in visible location in kitchen', weight: 10 },
           { id: 'K3.4', text: 'Allergen exposure prevention procedures followed during prep and serving', weight: 10 },
           { id: 'K3.5', text: 'Individual allergen-safe meal prepared and labeled for children with food allergies', weight: 10 },
@@ -1100,12 +1100,12 @@ const AUDITS = {
       {
         name: 'Section 4 - Operations & Equipment',
         items: [
-          { id: 'K4.1', text: 'All appliances in good working condition (dishwasher, oven, refrigerator, etc.)', weight: 3 },
-          { id: 'K4.2', text: 'Meals prepared and delivered to classrooms on schedule', weight: 3 },
+          { id: 'K4.1', text: 'All appliances in good working condition (dishwasher, oven, refrigerator, etc.)', weight: 5 },
+          { id: 'K4.2', text: 'Meals prepared and delivered to classrooms on schedule', weight: 5 },
           { id: 'K4.3', text: 'Biweekly and monthly food orders placed according to menu plan', weight: 1 },
-          { id: 'K4.4', text: 'Adequate food supply maintained for the current week/month', weight: 3 },
+          { id: 'K4.4', text: 'Adequate food supply maintained for the current week/month', weight: 5 },
           { id: 'K4.5', text: 'Daily inventory record maintained by kitchen staff', weight: 1 },
-          { id: 'K4.6', text: 'All necessary supplies stocked: gloves, paper towels, soap, sanitizer', weight: 3 },
+          { id: 'K4.6', text: 'All necessary supplies stocked: gloves, paper towels, soap, sanitizer', weight: 5 },
           { id: 'K4.7', text: 'Current month menu posted in the kitchen and in each classroom', weight: 1 },
           { id: 'K4.8', text: 'Fire extinguisher inspected, tagged, and not expired', weight: 10 },
           { id: 'K4.9', text: 'Is all food properly stored? Fruit and dairy refrigerated; bread and baked goods sealed; dry goods (e.g., oatmeal, flour) in closed, labeled containers stored off the floor', weight: 10 }
@@ -1116,21 +1116,21 @@ const AUDITS = {
         items: [
           { id: 'K5.1', text: 'Fridge temperature at 4\u00B0C (40\u00B0F) or colder; temperatures logged daily', weight: 10 },
           { id: 'K5.2', text: 'Freezer temperature at -18\u00B0C (0\u00B0F) or colder; temperatures logged', weight: 10 },
-          { id: 'K5.3', text: 'Thermometer calibrated and in use in the kitchen', weight: 3 },
+          { id: 'K5.3', text: 'Thermometer calibrated and in use in the kitchen', weight: 5 },
           { id: 'K5.4', text: 'Hot and cold water available and functional at kitchen sink', weight: 1 },
-          { id: 'K5.5', text: 'Expiration dates checked regularly; expired items removed immediately', weight: 3 },
+          { id: 'K5.5', text: 'Expiration dates checked regularly; expired items removed immediately', weight: 5 },
           { id: 'K5.6', text: 'Cooked food reaches safe internal temperatures (poultry 74\u00B0C, ground meat 71\u00B0C)', weight: 10 }
         ]
       },
       {
         name: 'Section 6 - Nutrition & Menu Compliance',
         items: [
-          { id: 'K6.1', text: 'Menu planned according to Canada\'s Food Guide: appropriate food groups served per age', weight: 3 },
-          { id: 'K6.2', text: 'At least one serving of vegetables or fruit provided per meal or snack', weight: 3 },
+          { id: 'K6.1', text: 'Menu planned according to Canada\'s Food Guide: appropriate food groups served per age', weight: 5 },
+          { id: 'K6.2', text: 'At least one serving of vegetables or fruit provided per meal or snack', weight: 5 },
           { id: 'K6.3', text: 'Whole grain options included at least once per day', weight: 1 },
-          { id: 'K6.4', text: 'No deep-fried foods served more than once per week', weight: 3 },
-          { id: 'K6.5', text: 'No ultra-processed foods served (chips, candy, soda, flavored milk)', weight: 3 },
-          { id: 'K6.6', text: 'Fresh drinking water available to children at all times in each classroom', weight: 3 },
+          { id: 'K6.4', text: 'No deep-fried foods served more than once per week', weight: 5 },
+          { id: 'K6.5', text: 'No ultra-processed foods served (chips, candy, soda, flavored milk)', weight: 5 },
+          { id: 'K6.6', text: 'Fresh drinking water available to children at all times in each classroom', weight: 5 },
           { id: 'K6.7', text: 'Age-appropriate textures and portion sizes provided (no choking hazards for under-3s)', weight: 10 },
           { id: 'K6.8', text: 'Infant formula and baby food stored, prepared, and served per AHS health guidelines', weight: 10 }
         ]
@@ -1143,11 +1143,11 @@ const AUDITS = {
       {
         name: 'Section 1 - Bilingual Programming',
         items: [
-          { id: 'P1.1', text: 'Daily programming offered in both English and Spanish', weight: 3 },
-          { id: 'P1.2', text: 'Spanish integrated naturally into routines - not only formal instruction', weight: 3 },
+          { id: 'P1.1', text: 'Daily programming offered in both English and Spanish', weight: 5 },
+          { id: 'P1.2', text: 'Spanish integrated naturally into routines - not only formal instruction', weight: 5 },
           { id: 'P1.3', text: 'Books, songs, and materials available in both English and Spanish', weight: 1 },
           { id: 'P1.4', text: 'Bilingual (English/Spanish) signage and labels visible throughout the learning environment', weight: 1 },
-          { id: 'P1.5', text: 'Staff demonstrate consistent use of Spanish during daily interactions with children', weight: 3 },
+          { id: 'P1.5', text: 'Staff demonstrate consistent use of Spanish during daily interactions with children', weight: 5 },
           { id: 'P1.6', text: 'Cultural celebrations reflect English- and Spanish-speaking communities in the program', weight: 1 },
           { id: 'P1.7', text: 'Spanish actively used in daily communications with parents: verbal updates, app messages, conversations at drop-off and pick-up, and written notices', weight: 1 }
         ]
@@ -1155,41 +1155,41 @@ const AUDITS = {
       {
         name: 'Section 2 - Curriculum & Play-Based Learning',
         items: [
-          { id: 'P2.1', text: 'Daily schedule balances child-initiated and educator-guided play', weight: 3 },
-          { id: 'P2.2', text: 'Learning provocations and intentional invitations to play are set up daily', weight: 3 },
-          { id: 'P2.3', text: 'Outdoor play offered at least once a day (weather permitting)', weight: 3 },
+          { id: 'P2.1', text: 'Daily schedule balances child-initiated and educator-guided play', weight: 5 },
+          { id: 'P2.2', text: 'Learning provocations and intentional invitations to play are set up daily', weight: 5 },
+          { id: 'P2.3', text: 'Outdoor play offered at least once a day (weather permitting)', weight: 5 },
           { id: 'P2.4', text: 'Block, dramatic, and sensory play areas available and in active use', weight: 1 },
-          { id: 'P2.5', text: 'Activities reflect the Learn Through Play curriculum domains (Belonging, Play, Inquiry, etc.)', weight: 3 },
+          { id: 'P2.5', text: 'Activities reflect the Learn Through Play curriculum domains (Belonging, Play, Inquiry, etc.)', weight: 5 },
           { id: 'P2.6', text: 'Loose parts and open-ended materials present in learning areas', weight: 1 },
-          { id: 'P2.7', text: 'Play plans or program plans documented and updated weekly', weight: 3 },
-          { id: 'P2.8', text: 'Activities are developmentally appropriate for each age group served', weight: 3 },
-          { id: 'P2.9', text: 'Emergent curriculum observed: educators build on children\'s interests and discoveries', weight: 3 },
-          { id: 'P2.10', text: 'Physical literacy activities (gross motor, outdoor movement) incorporated daily', weight: 3 }
+          { id: 'P2.7', text: 'Play plans or program plans documented and updated weekly', weight: 5 },
+          { id: 'P2.8', text: 'Activities are developmentally appropriate for each age group served', weight: 5 },
+          { id: 'P2.9', text: 'Emergent curriculum observed: educators build on children\'s interests and discoveries', weight: 5 },
+          { id: 'P2.10', text: 'Physical literacy activities (gross motor, outdoor movement) incorporated daily', weight: 5 }
         ]
       },
       {
         name: 'Section 3 - Developmental Documentation',
         items: [
-          { id: 'P3.1', text: 'Child observations and feedback documented in a notebook to feed emergent curriculum - educators actively track each child\'s interests, needs, and evolving goals', weight: 3 },
-          { id: 'P3.2', text: 'Documentation shared with families regularly (at minimum once per semester)', weight: 3 }
+          { id: 'P3.1', text: 'Child observations and feedback documented in a notebook to feed emergent curriculum - educators actively track each child\'s interests, needs, and evolving goals', weight: 5 },
+          { id: 'P3.2', text: 'Documentation shared with families regularly (at minimum once per semester)', weight: 5 }
         ]
       },
       {
         name: 'Section 4 - Behaviour Guidance',
         items: [
-          { id: 'P4.1', text: 'Staff use only positive guidance: redirection, co-regulation, natural consequences', weight: 3 },
+          { id: 'P4.1', text: 'Staff use only positive guidance: redirection, co-regulation, natural consequences', weight: 5 },
           { id: 'P4.2', text: 'No yelling, shaming, isolation, or physical punishment observed at any time', weight: 10 },
           { id: 'P4.3', text: 'Visual schedules and clear expectations posted to support child self-regulation', weight: 1 },
-          { id: 'P4.4', text: 'Staff acknowledge children\'s emotions verbally before redirecting behaviour', weight: 3 },
-          { id: 'P4.5', text: 'Behaviour support plans in place for children with persistent challenges', weight: 3 },
-          { id: 'P4.6', text: 'Families informed of guidance approaches and involved in developing support plans', weight: 3 },
-          { id: 'P4.7', text: 'Crisis de-escalation procedures documented and practiced by all staff', weight: 3 }
+          { id: 'P4.4', text: 'Staff acknowledge children\'s emotions verbally before redirecting behaviour', weight: 5 },
+          { id: 'P4.5', text: 'Behaviour support plans in place for children with persistent challenges', weight: 5 },
+          { id: 'P4.6', text: 'Families informed of guidance approaches and involved in developing support plans', weight: 5 },
+          { id: 'P4.7', text: 'Crisis de-escalation procedures documented and practiced by all staff', weight: 5 }
         ]
       },
       {
         name: 'Section 5 - Inclusion & Environment Design',
         items: [
-          { id: 'P5.1', text: 'Materials and activities modified to meet individual learning needs and IEP (Individualized Education Plan) goals', weight: 3 },
+          { id: 'P5.1', text: 'Materials and activities modified to meet individual learning needs and IEP (Individualized Education Plan) goals', weight: 5 },
           { id: 'P5.2', text: 'Room arrangement promotes children\'s independence and child-led exploration', weight: 1 },
           { id: 'P5.3', text: 'Sensory areas or calm corners available for self-regulation', weight: 1 },
           { id: 'P5.4', text: 'Cultural diversity reflected in books, images, toys, and classroom materials', weight: 1 },
@@ -1200,20 +1200,20 @@ const AUDITS = {
       {
         name: 'Section 6 - Educator Professional Practice',
         items: [
-          { id: 'P6.1', text: 'Reflective practice: educators review and adjust programming based on observed outcomes', weight: 3 },
-          { id: 'P6.2', text: 'Performance reviews completed for all staff at least annually', weight: 3 },
-          { id: 'P6.3', text: 'Educators demonstrate knowledge of Learn Through Play curriculum and inquiry-based learning', weight: 3 },
+          { id: 'P6.1', text: 'Reflective practice: educators review and adjust programming based on observed outcomes', weight: 5 },
+          { id: 'P6.2', text: 'Performance reviews completed for all staff at least annually', weight: 5 },
+          { id: 'P6.3', text: 'Educators demonstrate knowledge of Learn Through Play curriculum and inquiry-based learning', weight: 5 },
           { id: 'P6.4', text: 'Staff meetings held monthly to review program quality and child outcomes', weight: 1 },
           { id: 'P6.5', text: 'Child protection / mandatory reporting training current for all staff (every 3 years min.)', weight: 10 },
-          { id: 'P6.6', text: 'Actively contributes to team communication: raises classroom concerns, suggests improvements, and collaborates with colleagues to maximize time, resources, and program quality', weight: 3 }
+          { id: 'P6.6', text: 'Actively contributes to team communication: raises classroom concerns, suggests improvements, and collaborates with colleagues to maximize time, resources, and program quality', weight: 5 }
         ]
       },
       {
         name: 'Section 7 - Family Engagement & Communication',
         items: [
-          { id: 'P7.1', text: 'Daily communication shared with families (child activities, curriculum, etc. - every day)', weight: 3 },
-          { id: 'P7.2', text: 'Uses app to inform families about behaviour, incidents, and health-related issues in a timely manner', weight: 3 },
-          { id: 'P7.3', text: 'Interacts with families in a caring, respectful, and collaborative way', weight: 3 }
+          { id: 'P7.1', text: 'Daily communication shared with families (child activities, curriculum, etc. - every day)', weight: 5 },
+          { id: 'P7.2', text: 'Uses app to inform families about behaviour, incidents, and health-related issues in a timely manner', weight: 5 },
+          { id: 'P7.3', text: 'Interacts with families in a caring, respectful, and collaborative way', weight: 5 }
         ]
       }
     ]
@@ -2434,7 +2434,7 @@ async function exportAuditZip() {
 
     // Weight guide
     fmtRows.push([
-      { v: 'Weight:  1 = Standard (Low risk)  |  2 = Important (Medium risk)  |  3 = Critical (High risk)', s: { font: { italic: true, sz: 9, color: { rgb: '7F8C8D' } } } },
+      { v: 'Weight:  1 = Standard (Low risk)  |  5 = Important (Medium risk)  |  10 = Critical (High risk)', s: { font: { italic: true, sz: 9, color: { rgb: '7F8C8D' } } } },
       { v: '', s: {} }, { v: '', s: {} }, { v: '', s: {} }, { v: '', s: {} }, { v: '', s: {} }, { v: '', s: {} }
     ]);
 
@@ -2557,7 +2557,7 @@ async function exportAuditZip() {
     sumRows.push([{ v: '', s: {} }]);
     // Weight guide
     sumRows.push([
-      { v: 'Weight Guide:  1 = Standard (Low penalty risk)  |  2 = Important (Medium risk)  |  3 = Critical (High risk)', s: { font: { italic: true, sz: 9, color: { rgb: '7F8C8D' } } } }
+      { v: 'Weight Guide:  1 = Standard (Low penalty risk)  |  5 = Important (Medium risk)  |  10 = Critical (High risk)', s: { font: { italic: true, sz: 9, color: { rgb: '7F8C8D' } } } }
     ]);
     // Blank row
     sumRows.push([{ v: '', s: {} }]);
@@ -2904,8 +2904,19 @@ function msTgl(id) {
   const dd = document.getElementById(id + '-ms-dd');
   if (!dd) return;
   const isOpen = dd.classList.contains('ms-open');
-  document.querySelectorAll('.ms-dropdown.ms-open').forEach(d => d.classList.remove('ms-open'));
-  if (!isOpen) dd.classList.add('ms-open');
+  document.querySelectorAll('.ms-dropdown.ms-open').forEach(d => {
+    d.classList.remove('ms-open');
+    d.style.left = ''; d.style.right = '';
+  });
+  if (!isOpen) {
+    dd.classList.add('ms-open');
+    // Flip to right-align if it would go off the right edge of the viewport
+    const rect = dd.getBoundingClientRect();
+    if (rect.right > window.innerWidth - 8) {
+      dd.style.left = 'auto';
+      dd.style.right = '0';
+    }
+  }
 }
 document.addEventListener('click', e => {
   if (!e.target.closest('.ms-wrap')) {
@@ -3286,11 +3297,14 @@ async function loadDashboard() {
         .forEach(d => {
           const avg = Math.round(d.sum / d.count);
           const tr = document.createElement('tr');
+          tr.style.cursor = 'pointer';
+          tr.title = 'Click to see individual audits';
           tr.innerHTML =
             '<td>' + escHtml(d.teacher) + '</td>' +
             '<td>' + escHtml(d.type) + '</td>' +
             '<td>' + d.count + '</td>' +
             '<td><span class="score-badge ' + scoreBadgeClass(avg) + '">' + avg + '%</span></td>';
+          tr.onclick = () => showTeacherAuditList(d.teacher, d.type, filtered);
           teacherBody.appendChild(tr);
         });
     }
@@ -3544,6 +3558,49 @@ async function loadDashboard() {
     hideSpinner();
     toast('Dashboard error: ' + err.message, 'error');
   }
+}
+
+function showTeacherAuditList(teacher, auditTypeLabel, filtered) {
+  // Find all audits for this teacher + audit type
+  const matches = filtered.filter(a =>
+    (a.teacher1 === teacher || a.teacher2 === teacher) &&
+    auditLabel(a.audit_type) === auditTypeLabel
+  ).sort((a, b) => b.audit_date.localeCompare(a.audit_date));
+
+  const modal = document.getElementById('drillModal');
+  document.getElementById('drillTitle').textContent = teacher + ' — ' + auditTypeLabel;
+  document.getElementById('drillPhotoStatus').textContent = '';
+
+  const content = document.getElementById('drillContent');
+  content.innerHTML = '';
+
+  if (matches.length === 0) {
+    content.innerHTML = '<p style="color:var(--text-light);text-align:center">No audits found.</p>';
+  } else {
+    const tbl = document.createElement('table');
+    tbl.className = 'audit-table';
+    tbl.style.cssText = 'width:100%;font-size:.85rem';
+    tbl.innerHTML = '<thead><tr><th>Date</th><th>Room</th><th>Inspector</th><th>Score</th><th></th></tr></thead>';
+    const tbody = document.createElement('tbody');
+    matches.forEach(a => {
+      const pct = a.total_pct || 0;
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + formatDate(a.audit_date) + '</td>' +
+        '<td>' + escHtml(a.room || '-') + '</td>' +
+        '<td>' + escHtml(a.inspector || '-') + '</td>' +
+        '<td><span class="score-badge ' + scoreBadgeClass(pct) + '">' + pct + '%</span></td>' +
+        '<td><button class="btn btn-outline btn-sm" style="padding:3px 10px">View</button></td>';
+      tr.querySelector('button').onclick = () => {
+        modal.style.display = 'none';
+        navigate('detail', a.id);
+      };
+      tbody.appendChild(tr);
+    });
+    tbl.appendChild(tbody);
+    content.appendChild(tbl);
+  }
+  modal.style.display = 'flex';
 }
 
 async function showSectionDrill(allAnswers, filtered, sectionName, auditType, teacher, room) {
