@@ -131,6 +131,16 @@ input,select,textarea{font-family:inherit;font-size:1rem}
 .ms-badge{background:var(--primary);color:#fff;border-radius:10px;padding:1px 7px;font-size:.72rem;margin-left:4px}
 .ms-arrow{font-size:.6rem;color:var(--text-light);flex-shrink:0}
 
+/* Action Plans */
+.ap-status-open{background:#fef3c7;color:#92400e;border-radius:12px;padding:2px 10px;font-size:.78rem;font-weight:600}
+.ap-status-in_progress{background:#dbeafe;color:#1e40af;border-radius:12px;padding:2px 10px;font-size:.78rem;font-weight:600}
+.ap-status-resolved{background:#d1fae5;color:#065f46;border-radius:12px;padding:2px 10px;font-size:.78rem;font-weight:600}
+.ap-overdue{background:#fee2e2 !important}
+.ap-btn{font-size:.72rem;padding:3px 8px;border:none;border-radius:6px;cursor:pointer;font-weight:600}
+.ap-create-btn{background:#f59e0b;color:#fff;font-size:.72rem;padding:3px 9px;border:none;border-radius:6px;cursor:pointer;margin-top:6px;display:inline-block}
+.ap-create-btn:hover{background:#d97706}
+.ap-badge{background:#e74c3c;color:#fff;border-radius:10px;padding:1px 7px;font-size:.7rem;margin-left:6px}
+
 /* Dashboard */
 .dash-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-end}
 .dash-filters .form-group{margin-bottom:0;flex:1;min-width:120px}
@@ -296,6 +306,10 @@ input,select,textarea{font-family:inherit;font-size:1rem}
       <button class="menu-btn" id="allAuditsBtn" style="display:none" onclick="navigate('all-audits')">
         <span class="menu-icon">&#128196;</span>
         <span>All Audits</span>
+      </button>
+      <button class="menu-btn" id="actionPlansBtn" onclick="navigate('action-plans')">
+        <span class="menu-icon">&#128221;</span>
+        <span>Action Plans <span id="apMenuBadge" style="display:none" class="ap-badge"></span></span>
       </button>
       <button class="menu-btn" id="settingsBtn" style="display:none" onclick="navigate('settings')">
         <span class="menu-icon">&#9881;</span>
@@ -562,6 +576,64 @@ input,select,textarea{font-family:inherit;font-size:1rem}
       <thead><tr><th style="width:60px">Item</th><th>Question</th><th style="width:90px;text-align:center">Compliant</th><th style="width:100px;text-align:center">Non-Compliant</th><th style="width:50px;text-align:center">N/A</th><th style="width:80px;text-align:center">Avg Score</th></tr></thead>
       <tbody id="drillBody"></tbody>
     </table>
+  </div>
+</div>
+
+<!-- Action Plans View -->
+<div class="view" id="view-action-plans">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+    <button class="back-btn" onclick="goBack()">&#8592;</button>
+    <h2 style="color:var(--primary)">Action Plans</h2>
+  </div>
+  <div class="history-filters card">
+    <div class="form-group" style="margin-bottom:0;flex:1;min-width:120px">
+      <label>Status</label>
+      <select id="apFilterStatus">
+        <option value="">All Statuses</option>
+        <option value="open">Open</option>
+        <option value="in_progress">In Progress</option>
+        <option value="resolved">Resolved</option>
+      </select>
+    </div>
+    <div class="form-group" id="apAssignedWrap" style="margin-bottom:0;flex:1;min-width:120px;display:none">
+      <label>Assigned To</label>
+      <select id="apFilterAssigned"><option value="">All Staff</option></select>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="loadActionPlans()">Filter</button>
+  </div>
+  <div id="apList"></div>
+</div>
+
+<!-- Action Plan Create/Edit Modal -->
+<div id="apModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;overflow-y:auto">
+  <div style="background:#fff;max-width:520px;margin:40px auto;border-radius:12px;padding:24px;position:relative">
+    <button onclick="document.getElementById('apModal').style.display='none'" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#666">&times;</button>
+    <h3 style="color:var(--primary);margin-bottom:4px">&#128221; Create Remedial Action Plan</h3>
+    <p id="apModalContext" style="font-size:.82rem;color:var(--text-light);margin-bottom:16px"></p>
+    <div class="form-group">
+      <label>Item</label>
+      <div id="apModalItem" style="padding:10px;background:var(--bg);border-radius:8px;font-size:.88rem;line-height:1.4"></div>
+    </div>
+    <div class="form-group">
+      <label>What needs to be fixed / corrective action <span style="color:var(--danger)">*</span></label>
+      <textarea id="apDescription" rows="3" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:.9rem;resize:vertical" placeholder="Describe the corrective action required..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>Assigned To <span style="color:var(--danger)">*</span></label>
+      <select id="apAssignedTo" style="width:100%"><option value="">Select staff member...</option></select>
+    </div>
+    <div class="form-group">
+      <label>Due Date <span style="color:var(--danger)">*</span></label>
+      <input type="date" id="apDueDate" style="width:100%">
+    </div>
+    <div class="form-group">
+      <label>Additional Notes</label>
+      <textarea id="apNotes" rows="2" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:.9rem;resize:vertical" placeholder="Optional notes..."></textarea>
+    </div>
+    <input type="hidden" id="apAuditId">
+    <input type="hidden" id="apItemId">
+    <input type="hidden" id="apEditId">
+    <button class="btn btn-primary" onclick="saveActionPlan()" style="width:100%;margin-top:4px">Save Action Plan</button>
   </div>
 </div>
 
@@ -1425,6 +1497,10 @@ function showView(viewName) {
         navigate('menu');
       }
       break;
+    case 'action-plans':
+      document.getElementById('view-action-plans').classList.add('active');
+      loadActionPlans();
+      break;
     case 'settings':
       if (currentProfile && currentProfile.role === 'admin') {
         document.getElementById('view-settings').classList.add('active');
@@ -1444,7 +1520,7 @@ function goBack() {
   const base = parts[0];
   if (base === 'audit') navigate('select-audit');
   else if (base === 'detail') navigate(detailReturnView || 'history');
-  else if (['select-audit', 'history', 'dashboard', 'settings', 'all-audits'].includes(base)) navigate('menu');
+  else if (['select-audit', 'history', 'dashboard', 'settings', 'all-audits', 'action-plans'].includes(base)) navigate('menu');
   else navigate('menu');
 }
 
@@ -1580,6 +1656,24 @@ function refreshMenu() {
   document.getElementById('dashboardBtn').style.display = currentProfile.role === 'admin' ? 'flex' : 'none';
   document.getElementById('allAuditsBtn').style.display = currentProfile.role === 'admin' ? '' : 'none';
   document.getElementById('settingsBtn').style.display = currentProfile.role === 'admin' ? 'flex' : 'none';
+  // Show count of open/in-progress action plans on menu badge
+  refreshAPBadge();
+}
+
+async function refreshAPBadge() {
+  try {
+    let q = sb.from('action_plans').select('id', { count: 'exact', head: true })
+      .in('status', ['open', 'in_progress']);
+    if (currentProfile.role !== 'admin') {
+      q = q.eq('assigned_to', currentProfile.full_name || currentUser.email);
+    }
+    const { count } = await q;
+    const badge = document.getElementById('apMenuBadge');
+    if (badge) {
+      badge.textContent = count || '';
+      badge.style.display = count > 0 ? 'inline' : 'none';
+    }
+  } catch(e) { /* silently ignore */ }
 }
 
 // ===== AUDIT FORM =====
@@ -2239,6 +2333,15 @@ async function loadAuditDetail(auditId) {
           '<span style="flex:1;font-size:.85rem;line-height:1.3">' + escHtml(itemText) + '</span>' +
           '<span class="di-answer ' + ansClass + '">' + ansLabel + '</span>';
 
+        // Action Plan button for non-compliant items
+        if (ans.answer === 'non-compliant') {
+          const apBtn = document.createElement('button');
+          apBtn.className = 'ap-create-btn';
+          apBtn.textContent = '📋 Action Plan';
+          apBtn.onclick = () => openActionPlanModal(audit, ans.item_id, itemText);
+          itemDiv.appendChild(apBtn);
+        }
+
         secDiv.appendChild(itemDiv);
 
         // Show photos from Supabase Storage
@@ -2612,6 +2715,188 @@ async function exportAuditZip() {
 function thinBorder() {
   const b = { style: 'thin', color: { rgb: 'CCCCCC' } };
   return { top: b, bottom: b, left: b, right: b };
+}
+
+// ===== ACTION PLANS =====
+async function loadActionPlans() {
+  const statusFilter = document.getElementById('apFilterStatus').value;
+  const assignedFilter = document.getElementById('apFilterAssigned')?.value || '';
+  const isAdmin = currentProfile?.role === 'admin';
+
+  // Show/hide assigned filter for admins
+  const assignedWrap = document.getElementById('apAssignedWrap');
+  if (assignedWrap) assignedWrap.style.display = isAdmin ? '' : 'none';
+
+  // Populate assigned filter
+  const assignedEl = document.getElementById('apFilterAssigned');
+  if (isAdmin && assignedEl && assignedEl.options.length <= 1) {
+    const allStaff = [...lookupTeachers.map(t => t.name), ...lookupInspectors.map(i => i.name)];
+    [...new Set(allStaff)].sort().forEach(name => {
+      assignedEl.innerHTML += '<option value="' + escHtml(name) + '">' + escHtml(name) + '</option>';
+    });
+  }
+
+  const container = document.getElementById('apList');
+  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-light)">Loading...</div>';
+
+  try {
+    let q = sb.from('action_plans').select('*').order('due_date', { ascending: true });
+    if (statusFilter) q = q.eq('status', statusFilter);
+    if (!isAdmin) q = q.or('assigned_to.eq.' + (currentProfile.full_name || currentUser.email) + ',created_by.eq.' + currentUser.id);
+    if (isAdmin && assignedFilter) q = q.eq('assigned_to', assignedFilter);
+    const { data: plans, error } = await q;
+    if (error) throw error;
+
+    if (!plans || plans.length === 0) {
+      container.innerHTML = '<div class="card" style="text-align:center;padding:24px;color:var(--text-light)">&#128221; No action plans found. They are created from non-compliant items in audit details.</div>';
+      return;
+    }
+
+    const today = todayStr();
+    const groups = { overdue: [], open: [], in_progress: [], resolved: [] };
+    plans.forEach(p => {
+      if (p.status === 'resolved') groups.resolved.push(p);
+      else if (p.due_date && p.due_date < today) groups.overdue.push(p);
+      else if (p.status === 'in_progress') groups.in_progress.push(p);
+      else groups.open.push(p);
+    });
+
+    let html = '';
+    const renderGroup = (title, items, color) => {
+      if (items.length === 0) return '';
+      let rows = '';
+      items.forEach(p => {
+        const isOverdue = p.status !== 'resolved' && p.due_date && p.due_date < today;
+        const dueStr = p.due_date ? formatDate(p.due_date) : '-';
+        const dueFmt = isOverdue ? '<span style="color:var(--danger);font-weight:600">' + dueStr + ' ⚠️</span>' : dueStr;
+        rows += '<tr class="' + (isOverdue ? 'ap-overdue' : '') + '">' +
+          '<td style="font-size:.8rem">' + escHtml(formatDate(p.created_at?.slice(0,10) || '')) + '</td>' +
+          '<td style="font-size:.8rem">' + escHtml(p.audit_type || '-') + '</td>' +
+          '<td style="font-size:.8rem">' + escHtml(p.room || '-') + '</td>' +
+          '<td><strong style="font-size:.8rem">' + escHtml(p.item_id) + '</strong><br><span style="font-size:.75rem;color:var(--text-light)">' + escHtml((p.item_text || '').substring(0,60) + (p.item_text?.length > 60 ? '…' : '')) + '</span></td>' +
+          '<td style="font-size:.8rem">' + escHtml(p.description || '-') + '</td>' +
+          '<td style="font-size:.8rem">' + escHtml(p.assigned_to || '-') + '</td>' +
+          '<td style="font-size:.8rem">' + dueFmt + '</td>' +
+          '<td><span class="ap-status-' + p.status + '">' + p.status.replace('_',' ') + '</span></td>' +
+          '<td style="white-space:nowrap">' + apActionButtons(p, isAdmin) + '</td>' +
+          '</tr>';
+      });
+      return '<div class="card" style="margin-bottom:12px">' +
+        '<h3 style="color:' + color + ';margin-bottom:10px">' + title + ' (' + items.length + ')</h3>' +
+        '<div style="overflow-x:auto"><table class="audit-table" style="min-width:700px"><thead><tr>' +
+        '<th>Date</th><th>Type</th><th>Room</th><th>Item</th><th>Corrective Action</th><th>Assigned To</th><th>Due Date</th><th>Status</th><th>Actions</th>' +
+        '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+    };
+
+    html += renderGroup('🔴 Overdue', groups.overdue, 'var(--danger)');
+    html += renderGroup('🟡 Open', groups.open, '#92400e');
+    html += renderGroup('🔵 In Progress', groups.in_progress, '#1e40af');
+    if (!statusFilter || statusFilter === 'resolved') {
+      html += renderGroup('✅ Resolved', groups.resolved, 'var(--success)');
+    }
+    container.innerHTML = html || '<div style="text-align:center;padding:20px;color:var(--text-light)">No plans match the filter.</div>';
+  } catch(err) {
+    container.innerHTML = '<div class="card" style="color:var(--danger)">Error loading action plans: ' + escHtml(err.message) + '</div>';
+  }
+}
+
+function apActionButtons(p, isAdmin) {
+  if (p.status === 'resolved') {
+    return isAdmin ? '<button class="ap-btn" style="background:#fee2e2;color:#991b1b" onclick="deleteAP(\'' + p.id + '\')">Delete</button>' : '';
+  }
+  let btns = '';
+  if (p.status === 'open') btns += '<button class="ap-btn" style="background:#dbeafe;color:#1e40af;margin-right:4px" onclick="updateAPStatus(\'' + p.id + '\',\'in_progress\')">In Progress</button>';
+  btns += '<button class="ap-btn" style="background:#d1fae5;color:#065f46;margin-right:4px" onclick="updateAPStatus(\'' + p.id + '\',\'resolved\')">Resolve</button>';
+  if (isAdmin) btns += '<button class="ap-btn" style="background:#fee2e2;color:#991b1b" onclick="deleteAP(\'' + p.id + '\')">Delete</button>';
+  return btns;
+}
+
+async function updateAPStatus(id, status) {
+  try {
+    const upd = { status };
+    if (status === 'resolved') upd.resolved_at = new Date().toISOString();
+    const { error } = await sb.from('action_plans').update(upd).eq('id', id);
+    if (error) throw error;
+    toast(status === 'resolved' ? '✅ Marked as resolved!' : '🔵 Status updated!', 'success');
+    loadActionPlans();
+    refreshAPBadge();
+  } catch(err) { toast('Error: ' + err.message, 'error'); }
+}
+
+async function deleteAP(id) {
+  if (!confirm('Delete this action plan?')) return;
+  const { error } = await sb.from('action_plans').delete().eq('id', id);
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast('Deleted.', 'success');
+  loadActionPlans();
+}
+
+function openActionPlanModal(audit, itemId, itemText) {
+  document.getElementById('apEditId').value = '';
+  document.getElementById('apAuditId').value = audit.id;
+  document.getElementById('apItemId').value = itemId;
+  document.getElementById('apDescription').value = '';
+  document.getElementById('apNotes').value = '';
+  document.getElementById('apDueDate').value = '';
+  document.getElementById('apModalItem').textContent = itemId + ' — ' + itemText;
+  const typeLabel = auditLabel(audit.audit_type);
+  document.getElementById('apModalContext').textContent = typeLabel + (audit.audit_date ? ' | ' + formatDate(audit.audit_date) : '') + (audit.room ? ' | ' + audit.room : '');
+
+  // Populate assigned-to dropdown
+  const sel = document.getElementById('apAssignedTo');
+  sel.innerHTML = '<option value="">Select staff member...</option>';
+  const allStaff = [...lookupTeachers.map(t => t.name), ...lookupInspectors.map(i => i.name)];
+  [...new Set(allStaff)].sort().forEach(name => {
+    sel.innerHTML += '<option value="' + escHtml(name) + '">' + escHtml(name) + '</option>';
+  });
+
+  document.getElementById('apModal').style.display = 'block';
+}
+
+async function saveActionPlan() {
+  const description = document.getElementById('apDescription').value.trim();
+  const assignedTo = document.getElementById('apAssignedTo').value;
+  const dueDate = document.getElementById('apDueDate').value;
+  const notes = document.getElementById('apNotes').value.trim();
+  const auditId = document.getElementById('apAuditId').value;
+  const itemId = document.getElementById('apItemId').value;
+  const editId = document.getElementById('apEditId').value;
+  const itemText = document.getElementById('apModalItem').textContent.replace(itemId + ' — ', '');
+
+  if (!description) { toast('Please describe the corrective action needed.', 'error'); return; }
+  if (!assignedTo) { toast('Please select who is responsible.', 'error'); return; }
+  if (!dueDate) { toast('Please set a due date.', 'error'); return; }
+
+  // Get audit info for context
+  const { data: auditRow } = await sb.from('audits').select('audit_type,room,audit_date').eq('id', auditId).single();
+
+  const record = {
+    audit_id: auditId,
+    item_id: itemId,
+    item_text: itemText,
+    audit_type: auditRow ? auditLabel(auditRow.audit_type) : '',
+    room: auditRow?.room || '',
+    audit_date: auditRow?.audit_date || null,
+    description,
+    assigned_to: assignedTo,
+    due_date: dueDate,
+    notes: notes || null,
+    status: 'open',
+    created_by: currentUser.id
+  };
+
+  try {
+    let error;
+    if (editId) {
+      ({ error } = await sb.from('action_plans').update(record).eq('id', editId));
+    } else {
+      ({ error } = await sb.from('action_plans').insert(record));
+    }
+    if (error) throw error;
+    document.getElementById('apModal').style.display = 'none';
+    toast('✅ Action plan saved!', 'success');
+    refreshAPBadge();
+  } catch(err) { toast('Error saving: ' + err.message, 'error'); }
 }
 
 // ===== MULTI-SELECT COMPONENT =====
