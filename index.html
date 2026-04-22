@@ -123,9 +123,10 @@ input,select,textarea{font-family:inherit;font-size:1rem}
 .ms-wrap{position:relative;flex:1;min-width:120px}
 .ms-toggle{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--white);cursor:pointer;font-size:.875rem;min-height:38px;user-select:none;gap:4px}
 .ms-toggle:hover{border-color:var(--primary)}
-.ms-dropdown{position:absolute;top:calc(100% + 2px);left:0;min-width:220px;z-index:600;background:var(--white);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.18);max-height:220px;overflow-y:auto;display:none}
+.ms-dropdown{position:absolute;top:calc(100% + 2px);left:0;right:0;min-width:160px;z-index:600;background:var(--white);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.18);max-height:220px;overflow-y:auto;display:none}
 .ms-dropdown.ms-open{display:block}
-.ms-option{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;font-size:.875rem;margin:0;white-space:nowrap}
+.ms-option{display:flex;align-items:flex-start;gap:8px;padding:8px 12px;cursor:pointer;font-size:.875rem;margin:0}
+.ms-option input{margin-top:2px;flex-shrink:0}
 .ms-option:hover{background:var(--bg)}
 .ms-option input{margin:0;accent-color:var(--primary);cursor:pointer;flex-shrink:0}
 .ms-badge{background:var(--primary);color:#fff;border-radius:10px;padding:1px 7px;font-size:.72rem;margin-left:4px}
@@ -2904,24 +2905,8 @@ function msTgl(id) {
   const dd = document.getElementById(id + '-ms-dd');
   if (!dd) return;
   const isOpen = dd.classList.contains('ms-open');
-  document.querySelectorAll('.ms-dropdown.ms-open').forEach(d => {
-    d.classList.remove('ms-open');
-    d.style.left = ''; d.style.right = ''; d.style.minWidth = '';
-  });
-  if (!isOpen) {
-    // Reset to baseline so scrollWidth measures actual content
-    dd.style.left = '0'; dd.style.right = ''; dd.style.minWidth = '220px';
-    dd.classList.add('ms-open');
-    // scrollWidth gives the full content width even inside a narrow container
-    const needed = Math.min(Math.max(220, dd.scrollWidth + 2), Math.round(window.innerWidth * 0.9));
-    dd.style.minWidth = needed + 'px';
-    // Flip to right-align if it would still go off the right edge
-    const rect = dd.getBoundingClientRect();
-    if (rect.right > window.innerWidth - 8) {
-      dd.style.left = 'auto';
-      dd.style.right = '0';
-    }
-  }
+  document.querySelectorAll('.ms-dropdown.ms-open').forEach(d => d.classList.remove('ms-open'));
+  if (!isOpen) dd.classList.add('ms-open');
 }
 document.addEventListener('click', e => {
   if (!e.target.closest('.ms-wrap')) {
