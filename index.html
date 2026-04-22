@@ -3644,7 +3644,8 @@ function showTeacherAuditList(teacher, auditTypeLabel, filtered) {
         '<td><button class="btn btn-outline btn-sm" style="padding:3px 10px">View</button></td>';
       tr.querySelector('button').onclick = () => {
         modal.style.display = 'none';
-        navigate('detail', a.id);
+        detailReturnView = 'dashboard';
+        navigate('detail/' + a.id);
       };
       tbody.appendChild(tr);
     });
