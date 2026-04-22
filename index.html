@@ -580,6 +580,16 @@ input,select,textarea{font-family:inherit;font-size:1rem}
   </div>
 </div>
 
+<!-- Teacher / Audit-List Drill-Down Modal -->
+<div id="auditListModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:9999;overflow-y:auto">
+  <div style="background:#fff;max-width:680px;margin:40px auto;border-radius:12px;padding:24px;position:relative">
+    <button onclick="document.getElementById('auditListModal').style.display='none'" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#666">&times;</button>
+    <h3 id="auditListTitle" style="color:var(--primary);margin-bottom:4px"></h3>
+    <p id="auditListSubtitle" style="color:var(--text-light);font-size:.85rem;margin-bottom:16px"></p>
+    <div id="auditListContent"></div>
+  </div>
+</div>
+
 <!-- Action Plans View -->
 <div class="view" id="view-action-plans">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
@@ -665,6 +675,40 @@ input,select,textarea{font-family:inherit;font-size:1rem}
       <button class="btn btn-success btn-sm" onclick="addLookupItem('teachers','addTeacherInput')">Add</button>
     </div>
   </div>
+  <div class="card">
+    <h2>Scoring Configuration</h2>
+    <p style="font-size:.85rem;color:var(--text-light);margin-bottom:16px">Changes apply to new audits immediately. To recalculate historical audits, contact your administrator.</p>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+      <div class="form-group" style="margin:0;flex:0 0 auto">
+        <label>Critical NC Penalty (%)</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="number" id="settingPenaltyPct" min="0" max="25" step="1" value="5" style="width:80px">
+          <button class="btn btn-primary btn-sm" onclick="savePenaltySetting()">Save</button>
+        </div>
+      </div>
+      <div style="font-size:.82rem;color:var(--text-light);max-width:340px">
+        Each critical (weight 10) non-compliant item deducts this % from the final score.
+      </div>
+    </div>
+    <hr style="margin-bottom:16px">
+    <h3 style="font-size:1rem;margin-bottom:12px">Question Weight Overrides</h3>
+    <p style="font-size:.82rem;color:var(--text-light);margin-bottom:12px">Override the weight for any individual question. Leave on <em>Default</em> to use the standard weight.</p>
+    <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:12px;flex-wrap:wrap">
+      <div class="form-group" style="margin:0;flex:1;min-width:180px">
+        <label>Audit Type</label>
+        <select id="scoringAuditType" onchange="renderScoringQuestions()">
+          <option value="admin_facility">Centre Admin &amp; Facility</option>
+          <option value="licensing">Childcare Licensing</option>
+          <option value="ahs">AHS Audit</option>
+          <option value="kitchen">Kitchen Audit</option>
+          <option value="pedagogy">Programming &amp; Pedagogy</option>
+          <option value="daily_compliance">Daily Compliance</option>
+        </select>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="resetAuditTypeWeights()">Reset to Defaults</button>
+    </div>
+    <div id="scoringQuestionsList" style="max-height:420px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"></div>
+  </div>
 </div>
 
 <!-- Lightbox -->
@@ -696,6 +740,7 @@ let dashCharts = {};
 let lookupClassrooms = [];
 let lookupInspectors = [];
 let lookupTeachers = [];
+let appSettings = { penaltyPct: 5, questionWeights: {} };  // loaded from Supabase at login
 
 // ===== AUDIT DATA =====
 const AUDITS = {
@@ -1602,7 +1647,7 @@ async function handleLogin(e) {
       currentUser = data.user;
       await loadProfile();
     }
-    await loadLookups();
+    await Promise.all([loadLookups(), loadAppSettings()]);
     hideSpinner();
     navigate('menu');
   } catch (err) {
@@ -1877,7 +1922,7 @@ function updateScores() {
       if (a.answer === 'compliant') { secAchieved += a.weight; secMax += a.weight; }
       else if (a.answer === 'non-compliant') {
         secMax += a.weight;
-        if (a.weight === 10) criticalNCs++;
+        if ((appSettings.questionWeights[a.id] || a.weight) >= 10) criticalNCs++;
       }
       else if (a.answer === 'na') { /* exclude from scoring */ }
       // unanswered questions are excluded from scoring
@@ -1896,7 +1941,7 @@ function updateScores() {
 
   pillsEl.innerHTML = pillsHtml;
   const basePct = totalMax > 0 ? Math.round(totalAchieved / totalMax * 100) : 0;
-  const penalty = criticalNCs * 5;
+  const penalty = criticalNCs * (appSettings.penaltyPct || 5);
   const overallPct = Math.max(0, basePct - penalty);
   const penaltyNote = penalty > 0 ? ' − ' + penalty + '% critical penalty' : '';
   document.getElementById('overallScoreLabel').textContent = overallPct + '% (' + totalAchieved + '/' + totalMax + penaltyNote + ')';
@@ -2004,14 +2049,14 @@ async function submitAudit() {
       if (a.answer === 'compliant') { totalAchieved += a.weight; totalMax += a.weight; }
       else if (a.answer === 'non-compliant') {
         totalMax += a.weight;
-        if (a.weight === 10) submitCriticalNCs++;
+        if ((appSettings.questionWeights[a.id] || a.weight) >= 10) submitCriticalNCs++;
       }
       else if (a.answer === 'na') { /* exclude */ }
       // unanswered questions are excluded from scoring
     });
   });
   const basePctSubmit = totalMax > 0 ? Math.round(totalAchieved / totalMax * 100) : 0;
-  const totalPct = Math.max(0, basePctSubmit - submitCriticalNCs * 5);
+  const totalPct = Math.max(0, basePctSubmit - submitCriticalNCs * (appSettings.penaltyPct || 5));
 
   showSpinner();
   try {
@@ -3569,17 +3614,15 @@ async function loadDashboard() {
 }
 
 function showTeacherAuditList(teacher, auditTypeLabel, filtered) {
-  // Find all audits for this teacher + audit type
   const matches = filtered.filter(a =>
     (a.teacher1 === teacher || a.teacher2 === teacher) &&
     auditLabel(a.audit_type) === auditTypeLabel
   ).sort((a, b) => b.audit_date.localeCompare(a.audit_date));
 
-  const modal = document.getElementById('drillModal');
-  document.getElementById('drillTitle').textContent = teacher + ' — ' + auditTypeLabel;
-  document.getElementById('drillPhotoStatus').textContent = '';
-
-  const content = document.getElementById('drillContent');
+  const modal = document.getElementById('auditListModal');
+  document.getElementById('auditListTitle').textContent = teacher + ' — ' + auditTypeLabel;
+  document.getElementById('auditListSubtitle').textContent = matches.length + ' audit' + (matches.length !== 1 ? 's' : '');
+  const content = document.getElementById('auditListContent');
   content.innerHTML = '';
 
   if (matches.length === 0) {
@@ -3777,6 +3820,96 @@ async function loadLookups() {
   }
 }
 
+async function loadAppSettings() {
+  try {
+    const { data } = await sb.from('app_settings').select('key,value');
+    if (data) {
+      data.forEach(row => {
+        if (row.key === 'penalty_pct') appSettings.penaltyPct = Number(row.value) || 5;
+        if (row.key === 'question_weights') {
+          try { appSettings.questionWeights = JSON.parse(row.value) || {}; } catch(e) {}
+        }
+      });
+    }
+  } catch (err) { console.warn('Could not load app settings:', err.message); }
+}
+
+async function savePenaltySetting() {
+  const pct = parseInt(document.getElementById('settingPenaltyPct').value) || 5;
+  appSettings.penaltyPct = pct;
+  try {
+    await sb.from('app_settings').upsert({ key: 'penalty_pct', value: String(pct) }, { onConflict: 'key' });
+    toast('Penalty saved: ' + pct + '% per critical NC', 'success');
+  } catch (err) { toast('Error saving: ' + err.message, 'error'); }
+}
+
+async function saveQuestionWeight(itemId, weight) {
+  if (weight === null) {
+    delete appSettings.questionWeights[itemId];
+  } else {
+    appSettings.questionWeights[itemId] = weight;
+  }
+  try {
+    await sb.from('app_settings').upsert(
+      { key: 'question_weights', value: JSON.stringify(appSettings.questionWeights) },
+      { onConflict: 'key' }
+    );
+  } catch (err) { toast('Error saving weight: ' + err.message, 'error'); }
+}
+
+function renderScoringQuestions() {
+  const auditType = document.getElementById('scoringAuditType').value;
+  const auditDef = AUDITS[auditType];
+  const container = document.getElementById('scoringQuestionsList');
+  if (!auditDef) { container.innerHTML = ''; return; }
+
+  let html = '<table class="audit-table" style="width:100%;font-size:.82rem"><thead><tr>' +
+    '<th style="width:52px">#</th><th>Question</th><th style="width:90px">Section</th>' +
+    '<th style="width:110px;text-align:center">Weight</th></tr></thead><tbody>';
+
+  auditDef.sections.forEach(sec => {
+    sec.items.forEach(item => {
+      const override = appSettings.questionWeights[item.id];
+      const effectiveW = override !== undefined ? override : item.weight;
+      const wLabel = effectiveW === 10 ? '🔴 Critical' : effectiveW === 5 ? '🟡 Medium' : '🟢 Minor';
+      html += '<tr>' +
+        '<td>' + escHtml(item.id) + '</td>' +
+        '<td style="line-height:1.3">' + escHtml(item.text) + '</td>' +
+        '<td style="font-size:.75rem;color:var(--text-light)">' + escHtml(sec.name) + '</td>' +
+        '<td style="text-align:center">' +
+          '<select onchange="saveQuestionWeight(\'' + item.id.replace(/'/g,"\\'") + '\', this.value === \'default\' ? null : Number(this.value))" ' +
+          'style="font-size:.78rem;padding:2px 4px;border-radius:4px;border:1px solid var(--border)">' +
+          '<option value="default"' + (override === undefined ? ' selected' : '') + '>Default (' + item.weight + ')</option>' +
+          '<option value="1"' + (effectiveW === 1 && override !== undefined ? ' selected' : '') + '>🟢 Minor (1)</option>' +
+          '<option value="5"' + (effectiveW === 5 && override !== undefined ? ' selected' : '') + '>🟡 Medium (5)</option>' +
+          '<option value="10"' + (effectiveW === 10 && override !== undefined ? ' selected' : '') + '>🔴 Critical (10)</option>' +
+        '</select></td>' +
+      '</tr>';
+    });
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+async function resetAuditTypeWeights() {
+  if (!confirm('Reset all weight overrides for this audit type to defaults?')) return;
+  const auditType = document.getElementById('scoringAuditType').value;
+  const auditDef = AUDITS[auditType];
+  if (!auditDef) return;
+  auditDef.sections.forEach(sec => {
+    sec.items.forEach(item => { delete appSettings.questionWeights[item.id]; });
+  });
+  try {
+    await sb.from('app_settings').upsert(
+      { key: 'question_weights', value: JSON.stringify(appSettings.questionWeights) },
+      { onConflict: 'key' }
+    );
+    renderScoringQuestions();
+    toast('Weights reset to defaults', 'success');
+  } catch (err) { toast('Error resetting: ' + err.message, 'error'); }
+}
+
 async function loadSettings() {
   showSpinner();
   try {
@@ -3784,6 +3917,9 @@ async function loadSettings() {
     renderSettingsList('settingsClassroomsList', 'classrooms', lookupClassrooms);
     renderSettingsList('settingsInspectorsList', 'inspectors', lookupInspectors);
     renderSettingsList('settingsTeachersList', 'teachers', lookupTeachers);
+    // Scoring section
+    document.getElementById('settingPenaltyPct').value = appSettings.penaltyPct;
+    renderScoringQuestions();
     hideSpinner();
   } catch (err) {
     hideSpinner();
