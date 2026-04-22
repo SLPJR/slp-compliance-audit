@@ -2121,9 +2121,18 @@ async function submitAudit() {
 
 // ===== ALL AUDITS (ADMIN) =====
 function initAllAudits() {
-  // Populate multi-select dropdowns
-  msSetOptions('allFilterRoom', lookupClassrooms.map(c => ({value: c.name, label: c.name})), 'All Rooms');
+  // Save current selections before rebuilding dynamic dropdowns
+  const savedRooms      = msGetValues('allFilterRoom');
+  const savedInspectors = msGetValues('allFilterInspector');
+
+  // Rebuild dynamic dropdowns (resets checkboxes)
+  msSetOptions('allFilterRoom',      lookupClassrooms.map(c => ({value: c.name, label: c.name})), 'All Rooms');
   msSetOptions('allFilterInspector', lookupInspectors.map(i => ({value: i.name, label: i.name})), 'All Inspectors');
+
+  // Restore previous selections
+  msRestoreValues('allFilterRoom',      savedRooms,      'All Rooms');
+  msRestoreValues('allFilterInspector', savedInspectors, 'All Inspectors');
+
   if (!document.getElementById('allFilterFrom').value) {
     document.getElementById('allFilterFrom').value = monthStart();
   }
@@ -2922,6 +2931,15 @@ function msChange(id, placeholder) {
   if (checked.length === 0) lbl.innerHTML = escHtml(placeholder);
   else if (checked.length === 1) lbl.textContent = checked[0].dataset.label || checked[0].value;
   else lbl.innerHTML = escHtml(placeholder) + ' <span class="ms-badge">' + checked.length + '</span>';
+}
+function msRestoreValues(id, values, placeholder) {
+  if (!values || values.length === 0) return;
+  const wrap = document.getElementById(id + '-ms');
+  if (!wrap) return;
+  wrap.querySelectorAll('input[type=checkbox]').forEach(cb => {
+    if (values.includes(cb.value)) cb.checked = true;
+  });
+  msChange(id, placeholder);
 }
 function msGetValues(id) {
   const wrap = document.getElementById(id + '-ms');
