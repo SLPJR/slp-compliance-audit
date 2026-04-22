@@ -737,6 +737,8 @@ let viewStack = ['login'];
 let detailAuditId = null;
 let detailReturnView = 'history';
 let dashCharts = {};
+let dashboardFiltered = [];      // last filtered audit list from dashboard
+let teacherDrillState = null;    // restored when returning from audit detail
 let lookupClassrooms = [];
 let lookupInspectors = [];
 let lookupTeachers = [];
@@ -3606,6 +3608,14 @@ async function loadDashboard() {
       });
     }
 
+    // Save for modal restore after returning from audit detail
+    dashboardFiltered = filtered;
+    if (teacherDrillState) {
+      const s = teacherDrillState;
+      teacherDrillState = null;
+      showTeacherAuditList(s.teacher, s.auditTypeLabel, dashboardFiltered);
+    }
+
     hideSpinner();
   } catch (err) {
     hideSpinner();
@@ -3644,6 +3654,7 @@ function showTeacherAuditList(teacher, auditTypeLabel, filtered) {
         '<td><button class="btn btn-outline btn-sm" style="padding:3px 10px">View</button></td>';
       tr.querySelector('button').onclick = () => {
         modal.style.display = 'none';
+        teacherDrillState = { teacher, auditTypeLabel };
         detailReturnView = 'dashboard';
         navigate('detail/' + a.id);
       };
