@@ -723,6 +723,17 @@ input,select,textarea{font-family:inherit;font-size:1rem}
     </div>
     <div id="importPreviewDiv" style="margin-top:14px"></div>
   </div>
+
+  <div class="card" style="margin-top:16px;border:2px solid #f59e0b">
+    <h2 style="margin-bottom:6px">&#9878; Recalculate All Scores with Current Weights</h2>
+    <p style="font-size:.83rem;color:var(--text-light);margin-bottom:8px">
+      Updates <strong>every historical audit</strong> to use the current question weights defined in the app,
+      and clears any stored overrides so all future audits also use these weights.
+      This cannot be undone.
+    </p>
+    <div id="recalcStatusDiv" style="min-height:22px;margin-bottom:10px;font-size:.85rem"></div>
+    <button class="btn btn-sm" style="background:#f59e0b;color:#fff;font-weight:600" onclick="confirmRecalcAll()">&#9878; Recalculate All Audits</button>
+  </div>
 </div>
 
 <!-- Lightbox -->
@@ -4070,6 +4081,124 @@ async function applyImport() {
     clearImport();
   } catch(err) {
     toast('Error applying weights: ' + err.message, 'error');
+  } finally {
+    hideSpinner();
+  }
+}
+
+function confirmRecalcAll() {
+  if (!confirm(
+    'This will recalculate EVERY historical audit using the current question weights.\n\n' +
+    'It will also clear any stored weight overrides so all future audits use the same weights.\n\n' +
+    'This cannot be undone. Continue?'
+  )) return;
+  recalcAllAudits();
+}
+
+async function recalcAllAudits() {
+  // Build weight map: question_id → new base weight (from AUDITS object only — no overrides)
+  const weightMap = {};
+  for (const def of Object.values(AUDITS)) {
+    for (const sec of def.sections) {
+      for (const item of sec.items) {
+        weightMap[item.id] = item.weight;
+      }
+    }
+  }
+
+  const penaltyPct   = appSettings.penaltyPct || 5;
+  const critThreshold = 10;
+  const statusDiv    = document.getElementById('recalcStatusDiv');
+  const setStatus    = (msg, colour) => {
+    statusDiv.innerHTML = `<span style="color:${colour||'var(--primary)'}">${msg}</span>`;
+  };
+
+  showSpinner();
+  try {
+    // ── Step 1: Clear question_weights overrides ──────────────────────────────
+    setStatus('Step 1/4 — Clearing stored weight overrides…');
+    const { error: clErr } = await sb.from('app_settings')
+      .upsert({ key: 'question_weights', value: '{}' }, { onConflict: 'key' });
+    if (clErr) throw clErr;
+    appSettings.questionWeights = {};
+
+    // ── Step 2: Load all audit IDs ────────────────────────────────────────────
+    setStatus('Step 2/4 — Loading audit list…');
+    const { data: allAudits, error: auditsErr } = await sb.from('audits').select('id');
+    if (auditsErr) throw auditsErr;
+    if (!allAudits || allAudits.length === 0) {
+      setStatus('No audits found. Nothing to recalculate.', '#888');
+      toast('No audits found.', 'info');
+      return;
+    }
+
+    const total = allAudits.length;
+    let doneAudits = 0, doneAnswers = 0;
+
+    // ── Step 3: Process each audit ────────────────────────────────────────────
+    for (const { id: auditId } of allAudits) {
+      doneAudits++;
+      setStatus(`Step 3/4 — Recalculating audit ${doneAudits} of ${total}…`);
+
+      // Fetch every answer for this audit
+      const { data: answers, error: ansErr } = await sb.from('audit_answers')
+        .select('*').eq('audit_id', auditId);
+      if (ansErr) throw ansErr;
+
+      let achieved = 0, maxPts = 0, critNCs = 0;
+      const upsertBatch = [];
+
+      for (const ans of answers) {
+        const newW = weightMap[ans.item_id];
+
+        if (newW === undefined) {
+          // Removed question — exclude from scoring (keep answer text, zero out points)
+          upsertBatch.push({ ...ans, weight: 0, points: 0, max_points: 0 });
+          continue;
+        }
+
+        let pts = 0, mp = 0;
+        if (ans.answer === 'compliant')       { pts = newW; mp = newW; }
+        else if (ans.answer === 'non-compliant') {
+          pts = 0; mp = newW;
+          if (newW >= critThreshold) critNCs++;
+        }
+        // 'na' or unanswered → pts=0, mp=0
+
+        achieved += pts;
+        maxPts   += mp;
+        upsertBatch.push({ ...ans, weight: newW, points: pts, max_points: mp });
+      }
+
+      // Upsert answers in batches of 50
+      for (let i = 0; i < upsertBatch.length; i += 50) {
+        const { error: uErr } = await sb.from('audit_answers')
+          .upsert(upsertBatch.slice(i, i + 50), { onConflict: 'id' });
+        if (uErr) throw uErr;
+      }
+      doneAnswers += upsertBatch.length;
+
+      // Recalculate and update audit summary
+      const basePct  = maxPts > 0 ? Math.round(achieved / maxPts * 100) : 0;
+      const finalPct = Math.max(0, basePct - critNCs * penaltyPct);
+      const { error: updErr } = await sb.from('audits').update({
+        total_achieved: achieved,
+        total_max:      maxPts,
+        total_pct:      finalPct
+      }).eq('id', auditId);
+      if (updErr) throw updErr;
+    }
+
+    // ── Step 4: Done ──────────────────────────────────────────────────────────
+    setStatus(
+      `&#10003; Done! ${total} audit(s) and ${doneAnswers} answer(s) recalculated with new weights.`,
+      'var(--success, #16a34a)'
+    );
+    toast(`Recalculation complete — ${total} audit(s) updated.`, 'success');
+    renderScoringQuestions();   // refresh the scoring preview in Settings
+  } catch (err) {
+    setStatus(`&#9888; Error: ${err.message}`, 'var(--danger)');
+    toast('Recalculation failed: ' + err.message, 'error');
   } finally {
     hideSpinner();
   }
