@@ -556,7 +556,7 @@ input,select,textarea{font-family:inherit;font-size:1rem}
   <div class="chart-container"><h3>Average Score by Room</h3><canvas id="chartByRoom"></canvas></div>
   <div class="chart-container"><h3>Weekly Compliance Trend</h3><canvas id="chartTrend"></canvas></div>
   <div class="card"><h3 style="margin-bottom:8px;color:var(--primary)">Scores by Teacher</h3><table class="dash-table" id="teacherTable"><thead><tr><th>Teacher</th><th>Audit Type</th><th># Audits</th><th>Avg Score</th></tr></thead><tbody id="teacherBody"></tbody></table></div>
-  <div class="chart-container"><h3>Weekly Breakdown</h3><canvas id="chartWeekly"></canvas></div>
+  <div class="chart-container"><h3>Score by Audit Date</h3><canvas id="chartWeekly"></canvas></div>
   <div class="chart-container"><h3>Individual Audit Scores by Week</h3><canvas id="chartIndividual"></canvas></div>
   <div class="chart-container"><h3>Daily Audit Scores</h3><canvas id="chartDaily"></canvas></div>
   <div class="chart-container"><h3>Avg Score by Teacher</h3><canvas id="chartByTeacher"></canvas></div>
@@ -3222,9 +3222,10 @@ async function loadDashboard() {
     }
 
     // Render summary cards
+    const avgColor = avgScore >= 90 ? '#16a34a' : avgScore >= 80 ? '#d97706' : '#dc2626';
     document.getElementById('dashSummary').innerHTML =
       '<div class="summary-card"><div class="num">' + totalAudits + '</div><div class="label">Total Audits</div></div>' +
-      '<div class="summary-card"><div class="num">' + avgScore + '%</div><div class="label">Average Score</div></div>' +
+      '<div class="summary-card"><div class="num" style="color:' + avgColor + '">' + avgScore + '%</div><div class="label">Average Score</div></div>' +
       '<div class="summary-card"><div class="num" style="font-size:.9rem;word-break:break-word">' + escHtml(lowestArea) + '</div><div class="label">Lowest Scoring Area</div></div>';
 
     // ---- Chart: Average by Audit Type ----
@@ -3428,50 +3429,51 @@ async function loadDashboard() {
       });
     }
 
-    // ---- Weekly Breakdown Bar Chart (Mon-Fri, grouped by audit type) ----
+    // ---- Score by Date (individual audit bar per date, coloured by score) ----
     destroyChart('chartWeekly');
     {
-      const byWeekType = {};
-      const allWeeks = new Set();
+      // Group by exact date + audit type so every individual audit gets its own bar
+      const byDateType = {};
+      const allDates = new Set();
       const allTypes = new Set();
       filtered.forEach(a => {
-        const d = parseLocalDate(a.audit_date);
-        const day = d.getDay();
-        const diff = day === 0 ? -6 : 1 - day;
-        const weekStart = new Date(d);
-        weekStart.setDate(d.getDate() + diff);
-        const weekKey = weekStart.getFullYear() + '-' + String(weekStart.getMonth()+1).padStart(2,'0') + '-' + String(weekStart.getDate()).padStart(2,'0');
+        const dateKey = a.audit_date;
         const aType = auditLabel(a.audit_type);
-        allWeeks.add(weekKey);
+        allDates.add(dateKey);
         allTypes.add(aType);
-        const key = weekKey + '||' + aType;
-        if (!byWeekType[key]) byWeekType[key] = { sum: 0, count: 0 };
-        byWeekType[key].sum += (a.total_pct || 0);
-        byWeekType[key].count++;
+        const key = dateKey + '||' + aType;
+        if (!byDateType[key]) byDateType[key] = [];
+        byDateType[key].push(a.total_pct || 0);
       });
 
-      const sortedWeeks = [...allWeeks].sort();
-      const weekLabels = sortedWeeks.map(w => {
-        const mon = parseLocalDate(w);
-        const fri = new Date(mon.getTime() + 4*86400000);
-        return mon.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) + ' - ' +
-          fri.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+      const sortedDates = [...allDates].sort();
+      const dateLabels = sortedDates.map(d => {
+        const dt = parseLocalDate(d);
+        return dt.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
       });
 
-      const chartColors = ['#1a5276', '#2980b9', '#27ae60', '#f39c12', '#e74c3c', '#8e44ad'];
       const sortedTypes = [...allTypes].sort();
-      const datasets = sortedTypes.map((type, i) => ({
-        label: type,
-        data: sortedWeeks.map(w => {
-          const entry = byWeekType[w + '||' + type];
-          return entry ? Math.round(entry.sum / entry.count) : 0;
-        }),
-        backgroundColor: chartColors[i % chartColors.length]
-      }));
+      const datasets = sortedTypes.map(type => {
+        const data = sortedDates.map(d => {
+          const scores = byDateType[d + '||' + type];
+          if (!scores || scores.length === 0) return null;
+          // If multiple audits same day same type, show each — Chart.js takes one value per label,
+          // so average them and note in tooltip
+          return Math.round(scores.reduce((s, v) => s + v, 0) / scores.length);
+        });
+        return {
+          label: type,
+          data,
+          backgroundColor: data.map(v => v !== null ? barColor(v) : 'rgba(0,0,0,0)'),
+          borderColor:     data.map(v => v !== null ? barColor(v) : 'rgba(0,0,0,0)'),
+          borderWidth: 1,
+          skipNull: true,
+        };
+      });
 
       dashCharts.chartWeekly = new Chart(document.getElementById('chartWeekly'), {
         type: 'bar',
-        data: { labels: weekLabels, datasets },
+        data: { labels: dateLabels, datasets },
         options: {
           responsive: true,
           scales: { y: { beginAtZero: true, max: 110 } },
@@ -3495,19 +3497,25 @@ async function loadDashboard() {
         });
       });
 
-      const dailyColors = ['#1a5276', '#2980b9', '#27ae60', '#f39c12', '#e74c3c', '#8e44ad'];
+      const dailyLineColors = ['#1a5276', '#2980b9', '#8e44ad', '#795548', '#00838f', '#546e7a'];
       const dailyTypes = Object.keys(dailyByType).sort();
-      const dailyDatasets = dailyTypes.map((type, i) => ({
-        label: type,
-        data: dailyByType[type].map(e => ({ x: e.date, y: e.score, detail: e.detail })),
-        backgroundColor: dailyColors[i % dailyColors.length] + 'CC',
-        borderColor: dailyColors[i % dailyColors.length],
-        borderWidth: 2,
-        pointRadius: 6,
-        pointHoverRadius: 8,
-        showLine: true,
-        tension: 0.3
-      }));
+      const dailyDatasets = dailyTypes.map((type, i) => {
+        const entries = dailyByType[type];
+        const ptColors = entries.map(e => barColor(e.score));
+        return {
+          label: type,
+          data: entries.map(e => ({ x: e.date, y: e.score, detail: e.detail })),
+          backgroundColor: ptColors.map(c => c + 'CC'),
+          borderColor: dailyLineColors[i % dailyLineColors.length] + '88',
+          pointBackgroundColor: ptColors,
+          pointBorderColor: ptColors,
+          borderWidth: 2,
+          pointRadius: 7,
+          pointHoverRadius: 9,
+          showLine: true,
+          tension: 0.3
+        };
+      });
 
       dashCharts.chartDaily = new Chart(document.getElementById('chartDaily'), {
         type: 'scatter',
@@ -3578,22 +3586,25 @@ async function loadDashboard() {
           fri.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
       });
 
-      const indColors = ['#1a5276', '#2980b9', '#27ae60', '#f39c12', '#e74c3c', '#8e44ad'];
       const indTypes = Object.keys(indByType).sort();
-      const indDatasets = indTypes.map((type, i) => {
+      const indDatasets = indTypes.map((type) => {
         const points = [];
+        const ptColors = [];
         indByType[type].forEach(entry => {
           const weekIdx = indSortedWeeks.indexOf(entry.weekKey);
           points.push({ x: weekIdx, y: entry.score, detail: entry.label });
+          ptColors.push(barColor(entry.score));
         });
         return {
           label: type,
           data: points,
-          backgroundColor: indColors[i % indColors.length] + 'CC',
-          borderColor: indColors[i % indColors.length],
+          backgroundColor: ptColors.map(c => c + 'CC'),
+          borderColor: ptColors,
+          pointBackgroundColor: ptColors,
+          pointBorderColor: ptColors,
           borderWidth: 1,
-          pointRadius: 6,
-          pointHoverRadius: 8
+          pointRadius: 7,
+          pointHoverRadius: 9
         };
       });
 
