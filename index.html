@@ -3260,7 +3260,7 @@ async function loadDashboard() {
     };
 
     destroyChart('chartByType');
-    if (Object.keys(byType).length > 0) {
+    {
       const typeKeys = Object.keys(byType).sort((a,b) => Math.round(byType[b].sum/byType[b].count) - Math.round(byType[a].sum/byType[a].count));
       const labels = typeKeys.map(t => auditLabel(t));
       const values = typeKeys.map(t => Math.round(byType[t].sum / byType[t].count));
@@ -3286,7 +3286,7 @@ async function loadDashboard() {
     });
 
     destroyChart('chartByRoom');
-    if (Object.keys(byRoom).length > 0) {
+    {
       const roomKeys = Object.keys(byRoom).sort((a,b) => Math.round(byRoom[b].sum/byRoom[b].count) - Math.round(byRoom[a].sum/byRoom[a].count));
       const roomValues = roomKeys.map(r => Math.round(byRoom[r].sum / byRoom[r].count));
       dashCharts.chartByRoom = new Chart(document.getElementById('chartByRoom'), {
@@ -3303,7 +3303,7 @@ async function loadDashboard() {
 
     // ---- Chart: Weekly Trend (Mon-Fri weeks) ----
     destroyChart('chartTrend');
-    if (filtered.length > 0) {
+    {
       const weekMap = {};
       filtered.forEach(a => {
         const d = parseLocalDate(a.audit_date);
@@ -3396,7 +3396,7 @@ async function loadDashboard() {
       });
     });
     destroyChart('chartByTeacher');
-    if (Object.keys(byTeacherScore).length > 0) {
+    {
       const tKeys = Object.keys(byTeacherScore).sort((a,b) => Math.round(byTeacherScore[b].sum/byTeacherScore[b].count) - Math.round(byTeacherScore[a].sum/byTeacherScore[a].count));
       const tVals = tKeys.map(t => Math.round(byTeacherScore[t].sum / byTeacherScore[t].count));
       dashCharts.chartByTeacher = new Chart(document.getElementById('chartByTeacher'), {
@@ -3413,7 +3413,7 @@ async function loadDashboard() {
 
     // ---- Chart: Avg Score by Classroom (sorted high→low) ----
     destroyChart('chartByClassroom');
-    if (Object.keys(byRoom).length > 0) {
+    {
       const clKeys = Object.keys(byRoom).sort((a,b) => Math.round(byRoom[b].sum/byRoom[b].count) - Math.round(byRoom[a].sum/byRoom[a].count));
       const clVals = clKeys.map(r => Math.round(byRoom[r].sum / byRoom[r].count));
       dashCharts.chartByClassroom = new Chart(document.getElementById('chartByClassroom'), {
@@ -3430,7 +3430,7 @@ async function loadDashboard() {
 
     // ---- Weekly Breakdown Bar Chart (Mon-Fri, grouped by audit type) ----
     destroyChart('chartWeekly');
-    if (filtered.length > 0) {
+    {
       const byWeekType = {};
       const allWeeks = new Set();
       const allTypes = new Set();
@@ -3483,7 +3483,7 @@ async function loadDashboard() {
 
     // ---- Daily Audit Scores (actual dates on x-axis) ----
     destroyChart('chartDaily');
-    if (filtered.length > 0) {
+    {
       const dailyByType = {};
       filtered.forEach(a => {
         const aType = auditLabel(a.audit_type);
@@ -3550,7 +3550,7 @@ async function loadDashboard() {
 
     // ---- Individual Audit Scores by Week ----
     destroyChart('chartIndividual');
-    if (filtered.length > 0) {
+    {
       const indWeeks = new Set();
       const indByType = {};
       filtered.forEach(a => {
