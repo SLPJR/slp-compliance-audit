@@ -552,6 +552,24 @@ input,select,textarea{font-family:inherit;font-size:1rem}
     <button class="btn btn-primary btn-sm" onclick="loadDashboard()">Apply</button>
   </div>
   <div class="summary-cards" id="dashSummary"></div>
+
+  <!-- Daily Compliance Coverage Grid -->
+  <div class="card" id="dailyCompliancePanel" style="margin-bottom:0;display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+      <h3 style="margin:0;color:var(--primary)">&#128203; Daily Compliance — Classroom Coverage</h3>
+      <span id="dcMissingBadge"></span>
+    </div>
+    <p style="font-size:.82rem;color:var(--text-light);margin:0 0 10px">Headcount audit per classroom per day.
+      <span style="display:inline-flex;align-items:center;gap:10px;margin-left:4px">
+        <span style="background:#dcfce7;color:#16a34a;padding:1px 8px;border-radius:10px;font-size:.75rem;font-weight:700">100%</span>
+        <span style="background:#fef9c3;color:#d97706;padding:1px 8px;border-radius:10px;font-size:.75rem;font-weight:700">50%</span>
+        <span style="background:#fee2e2;color:#dc2626;padding:1px 8px;border-radius:10px;font-size:.75rem;font-weight:700">0% / Missing</span>
+      </span>
+    </p>
+    <div id="dcGridWrap" style="overflow-x:auto;max-height:520px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px"></div>
+    <div id="dcMissingSummary" style="margin-top:8px"></div>
+  </div>
+
   <div class="chart-container"><h3>Average Score by Audit Type</h3><canvas id="chartByType"></canvas></div>
   <div class="chart-container"><h3>Average Score by Room</h3><canvas id="chartByRoom"></canvas></div>
   <div class="chart-container"><h3>Weekly Compliance Trend</h3><canvas id="chartTrend"></canvas></div>
@@ -3043,6 +3061,134 @@ function initDashboard() {
   loadDashboard();
 }
 
+function renderDailyComplianceGrid(dcAudits, fromDateStr, toDateStr) {
+  const panel   = document.getElementById('dailyCompliancePanel');
+  const wrap    = document.getElementById('dcGridWrap');
+  const summary = document.getElementById('dcMissingSummary');
+  const badge   = document.getElementById('dcMissingBadge');
+
+  const classrooms = lookupClassrooms.map(c => c.name).sort();
+  panel.style.display = '';
+
+  if (!dcAudits || dcAudits.length === 0) {
+    wrap.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:16px">No Daily Compliance audits found for this period.</p>';
+    summary.innerHTML = '';
+    badge.innerHTML = '';
+    return;
+  }
+
+  // Build score map: date → room → [scores]
+  const scoreMap = {};
+  dcAudits.forEach(a => {
+    if (!a.audit_date || !a.room) return;
+    if (!scoreMap[a.audit_date]) scoreMap[a.audit_date] = {};
+    if (!scoreMap[a.audit_date][a.room]) scoreMap[a.audit_date][a.room] = [];
+    scoreMap[a.audit_date][a.room].push(a.total_pct || 0);
+  });
+
+  // Determine date range
+  const today = new Date(); today.setHours(0,0,0,0);
+  const toDate = toDateStr ? parseLocalDate(toDateStr) : today;
+  const auditDates = Object.keys(scoreMap).sort();
+  const earliestAudit = auditDates.length > 0 ? parseLocalDate(auditDates[0]) : today;
+  const thirtyAgo = new Date(today.getTime() - 29 * 86400000);
+  const fromDate = fromDateStr ? parseLocalDate(fromDateStr) : new Date(Math.max(earliestAudit.getTime(), thirtyAgo.getTime()));
+
+  // Generate every calendar day in range (newest first), cap at 90
+  const allDates = [];
+  const cur = new Date(toDate);
+  while (cur >= fromDate && allDates.length < 90) {
+    const y = cur.getFullYear();
+    const m = String(cur.getMonth()+1).padStart(2,'0');
+    const d = String(cur.getDate()).padStart(2,'0');
+    allDates.push(y + '-' + m + '-' + d);
+    cur.setDate(cur.getDate() - 1);
+  }
+
+  let totalMissing = 0;
+  const missingDays = [];
+
+  // Build table
+  const colW = Math.max(80, Math.floor(360 / Math.max(classrooms.length, 1)));
+  let html = '<table style="border-collapse:collapse;width:100%;min-width:' + (classrooms.length * colW + 140) + 'px;font-size:.8rem">';
+  html += '<thead><tr style="background:#f3f4f6;position:sticky;top:0;z-index:2">';
+  html += '<th style="text-align:left;padding:7px 10px;white-space:nowrap;border-bottom:2px solid #d1d5db;min-width:130px">Date</th>';
+  classrooms.forEach(r => {
+    html += '<th style="text-align:center;padding:7px 4px;border-bottom:2px solid #d1d5db;min-width:' + colW + 'px;font-size:.75rem">' + escHtml(r) + '</th>';
+  });
+  html += '<th style="text-align:center;padding:7px 6px;border-bottom:2px solid #d1d5db;min-width:62px">&#9888;</th>';
+  html += '</tr></thead><tbody>';
+
+  allDates.forEach((date, idx) => {
+    const dt = parseLocalDate(date);
+    const isWeekend = dt.getDay() === 0 || dt.getDay() === 6;
+    const dayScores = scoreMap[date] || {};
+    const dateLabel = dt.toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' });
+    const isToday = date === allDates[0] && !toDateStr;
+    const rowBg = isWeekend ? '#fafafa' : (idx % 2 === 0 ? '#fff' : '#f9fafb');
+
+    const missingRooms = isWeekend ? [] : classrooms.filter(r => !dayScores[r]);
+    if (!isWeekend && missingRooms.length > 0) {
+      totalMissing += missingRooms.length;
+      missingDays.push({ date: dateLabel, rooms: missingRooms });
+    }
+
+    html += '<tr style="background:' + rowBg + ';border-bottom:1px solid #e5e7eb">';
+    html += '<td style="padding:5px 10px;white-space:nowrap;font-weight:' + (isToday ? '700' : '400') + ';color:' + (isWeekend ? '#9ca3af' : '#111') + '">';
+    if (isToday) html += '<span style="background:#dbeafe;color:#1d4ed8;border-radius:4px;padding:1px 5px;font-size:.72rem;margin-right:4px">TODAY</span>';
+    html += escHtml(dateLabel) + '</td>';
+
+    classrooms.forEach(room => {
+      const scores = dayScores[room];
+      if (!scores || scores.length === 0) {
+        if (isWeekend) {
+          html += '<td style="text-align:center;color:#d1d5db">—</td>';
+        } else {
+          html += '<td style="text-align:center"><span style="background:#fee2e2;color:#dc2626;padding:2px 7px;border-radius:10px;font-weight:700">Missing</span></td>';
+        }
+      } else {
+        const avg = Math.round(scores.reduce((s,v) => s+v, 0) / scores.length);
+        const bg = avg >= 90 ? '#dcfce7' : avg >= 40 ? '#fef9c3' : '#fee2e2';
+        const col = avg >= 90 ? '#16a34a' : avg >= 40 ? '#d97706' : '#dc2626';
+        html += '<td style="text-align:center"><span style="background:' + bg + ';color:' + col + ';padding:2px 8px;border-radius:10px;font-weight:700">' + avg + '%</span></td>';
+      }
+    });
+
+    // Missing count / checkmark
+    if (isWeekend) {
+      html += '<td style="text-align:center;color:#d1d5db;font-size:.75rem">off</td>';
+    } else if (missingRooms.length === 0) {
+      html += '<td style="text-align:center;color:#16a34a;font-size:.9rem">&#10003;</td>';
+    } else {
+      html += '<td style="text-align:center"><span style="background:#fee2e2;color:#dc2626;padding:2px 6px;border-radius:10px;font-weight:700">' + missingRooms.length + '</span></td>';
+    }
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+
+  // Badge
+  if (totalMissing === 0) {
+    badge.innerHTML = '<span style="background:#dcfce7;color:#16a34a;padding:3px 10px;border-radius:10px;font-weight:700;font-size:.82rem">&#10003; All classrooms audited</span>';
+  } else {
+    badge.innerHTML = '<span style="background:#fee2e2;color:#dc2626;padding:3px 10px;border-radius:10px;font-weight:700;font-size:.82rem">&#9888; ' + totalMissing + ' missing slot' + (totalMissing !== 1 ? 's' : '') + '</span>';
+  }
+
+  // Collapsible missing list
+  if (missingDays.length === 0) {
+    summary.innerHTML = '';
+  } else {
+    let sHtml = '<details><summary style="cursor:pointer;font-size:.82rem;color:#92400e;font-weight:600;padding:4px 0">&#9660; ' + missingDays.length + ' day' + (missingDays.length !== 1 ? 's' : '') + ' with missing audits — click to expand</summary>';
+    sHtml += '<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;margin-top:6px;font-size:.82rem"><ul style="margin:0;padding-left:16px;line-height:1.8">';
+    missingDays.forEach(m => {
+      sHtml += '<li><strong>' + escHtml(m.date) + '</strong>: ' + m.rooms.map(r => '<span style="background:#fee2e2;color:#dc2626;padding:1px 6px;border-radius:8px;margin:0 2px">' + escHtml(r) + '</span>').join(' ') + '</li>';
+    });
+    sHtml += '</ul></div></details>';
+    summary.innerHTML = sHtml;
+  }
+}
+
 async function loadDashboard() {
   showSpinner();
   try {
@@ -3065,6 +3211,13 @@ async function loadDashboard() {
 
     const { data: audits, error } = await query;
     if (error) throw error;
+
+    // Separate lightweight fetch for Daily Compliance grid (always, regardless of type filter)
+    let dcQuery = sb.from('audits').select('id, audit_date, room, total_pct')
+      .eq('audit_type', 'daily_compliance').order('audit_date', { ascending: true });
+    if (fromDate) dcQuery = dcQuery.gte('audit_date', fromDate);
+    if (toDate) dcQuery = dcQuery.lte('audit_date', toDate);
+    const { data: dcData } = await dcQuery;
 
     let filtered = audits || [];
     if (teacherFilters.length > 0) {
@@ -3639,6 +3792,9 @@ async function loadDashboard() {
         }
       });
     }
+
+    // Daily Compliance coverage grid (always shown, separate from type filter)
+    renderDailyComplianceGrid(dcData || [], fromDate, toDate);
 
     // Save for modal restore after returning from audit detail
     dashboardFiltered = filtered;
