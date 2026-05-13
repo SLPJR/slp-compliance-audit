@@ -3067,7 +3067,9 @@ function renderDailyComplianceGrid(dcAudits, fromDateStr, toDateStr) {
   const summary = document.getElementById('dcMissingSummary');
   const badge   = document.getElementById('dcMissingBadge');
 
-  const classrooms = lookupClassrooms.map(c => c.name).sort();
+  const classrooms = lookupClassrooms.map(c => c.name)
+    .filter(n => !n.toLowerCase().includes('kitchen'))
+    .sort();
   panel.style.display = '';
 
   if (!dcAudits || dcAudits.length === 0) {
