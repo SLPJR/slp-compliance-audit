@@ -1963,7 +1963,7 @@ function updateScores() {
       if (a.answer === 'compliant') { secAchieved += a.weight; secMax += a.weight; }
       else if (a.answer === 'non-compliant') {
         secMax += a.weight;
-        if ((appSettings.questionWeights[a.id] || a.weight) >= 10) criticalNCs++;
+        if (currentAuditType !== 'daily_compliance' && (appSettings.questionWeights[a.id] || a.weight) >= 10) criticalNCs++;
       }
       else if (a.answer === 'na') { /* exclude from scoring */ }
       // unanswered questions are excluded from scoring
@@ -2090,7 +2090,7 @@ async function submitAudit() {
       if (a.answer === 'compliant') { totalAchieved += a.weight; totalMax += a.weight; }
       else if (a.answer === 'non-compliant') {
         totalMax += a.weight;
-        if ((appSettings.questionWeights[a.id] || a.weight) >= 10) submitCriticalNCs++;
+        if (currentAuditType !== 'daily_compliance' && (appSettings.questionWeights[a.id] || a.weight) >= 10) submitCriticalNCs++;
       }
       else if (a.answer === 'na') { /* exclude */ }
       // unanswered questions are excluded from scoring
