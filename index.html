@@ -632,7 +632,6 @@ input,select,textarea{font-family:inherit;font-size:1rem}
       <select id="apFilterStatus">
         <option value="">All Statuses</option>
         <option value="open">Open</option>
-        <option value="in_progress">In Progress</option>
         <option value="resolved">Resolved</option>
       </select>
     </div>
@@ -2894,7 +2893,8 @@ async function loadActionPlans() {
 
   try {
     let q = sb.from('action_plans').select('*').order('audit_date', { ascending: false });
-    if (statusFilter) q = q.eq('status', statusFilter);
+    if (statusFilter === 'open') q = q.in('status', ['open', 'in_progress']);
+    else if (statusFilter) q = q.eq('status', statusFilter);
     if (roomFilter)   q = q.eq('room', roomFilter);
     if (!isAdmin) q = q.or(`assigned_to.eq.${currentProfile?.full_name || currentUser?.email},created_by.eq.${currentUser.id}`);
     const { data: plans, error } = await q;
