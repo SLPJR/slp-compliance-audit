@@ -2958,7 +2958,10 @@ async function loadActionPlans() {
           '</div>' +
           (p.description ? '<div style="font-size:.8rem;color:var(--text-light);margin-bottom:5px">' + escHtml(p.description) + '</div>' : '') +
           '<div style="font-size:.75rem;color:var(--text-light)">' + escHtml([p.room, p.audit_type].filter(Boolean).join(' · ')) + '</div>' +
-          (isAdmin ? '<button class="btn btn-sm" style="background:#fee2e2;color:#991b1b;margin-top:6px" onclick="deleteAP(\'' + p.id + '\')">&#128465; Delete</button>' : '') +
+          (isAdmin ? '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">' +
+            '<button class="btn btn-sm" style="background:#fef9c3;color:#92400e" onclick="unresolveNCR(\'' + p.id + '\')">&#8635; Reopen</button>' +
+            '<button class="btn btn-sm" style="background:#fee2e2;color:#991b1b" onclick="deleteAP(\'' + p.id + '\')">&#128465; Delete</button>' +
+            '</div>' : '') +
           '</div>';
       });
       html += '</div></details>';
@@ -2997,6 +3000,17 @@ async function resolveNCR(id) {
   const { error } = await sb.from('action_plans').update(upd).eq('id', id);
   if (error) { toast('Error: ' + error.message, 'error'); return; }
   toast('✅ Marked as resolved!', 'success');
+  loadActionPlans();
+  refreshAPBadge();
+}
+
+async function unresolveNCR(id) {
+  if (!confirm('Reopen this non-compliance and move it back to pending?')) return;
+  const { error } = await sb.from('action_plans')
+    .update({ status: 'open', resolved_at: null })
+    .eq('id', id);
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast('↩ Reopened — moved back to pending.', 'success');
   loadActionPlans();
   refreshAPBadge();
 }
