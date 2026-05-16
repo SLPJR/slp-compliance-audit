@@ -582,6 +582,18 @@ input,select,textarea{font-family:inherit;font-size:1rem}
   <div class="card"><h3 style="margin-bottom:4px;color:var(--primary)">Scores by Section <span style="font-size:.75rem;font-weight:400;color:var(--text-light)">(showing &lt; 100% only)</span></h3><table class="dash-table" id="sectionTable"><thead><tr><th>Audit Type</th><th>Section</th><th>Avg Score</th></tr></thead><tbody id="sectionBody"></tbody></table></div>
   <div class="card"><h3 style="margin-bottom:4px;color:var(--primary)">Scores by Section per Teacher <span style="font-size:.75rem;font-weight:400;color:var(--text-light)">(showing &lt; 100% only)</span></h3><table class="dash-table" id="sectionTeacherTable"><thead><tr><th>Teacher</th><th>Audit Type</th><th>Section</th><th>Avg Score</th></tr></thead><tbody id="sectionTeacherBody"></tbody></table></div>
   <div class="card"><h3 style="margin-bottom:4px;color:var(--primary)">Scores by Section per Classroom <span style="font-size:.75rem;font-weight:400;color:var(--text-light)">(showing &lt; 100% only)</span></h3><table class="dash-table" id="sectionRoomTable"><thead><tr><th>Classroom</th><th>Audit Type</th><th>Section</th><th>Avg Score</th></tr></thead><tbody id="sectionRoomBody"></tbody></table></div>
+  <!-- NCR Trends -->
+  <div class="card" id="ncrTrendsCard" style="margin-top:0">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      <h3 style="margin:0;color:var(--primary)">&#128202; Non-Compliance Trends</h3>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm" id="ncrTabCentre" onclick="ncrTab('centre')" style="background:var(--primary);color:#fff">Centre-Wide</button>
+        <button class="btn btn-sm" id="ncrTabRoom" onclick="ncrTab('room')" style="background:#e5e7eb;color:#374151">By Classroom</button>
+        <button class="btn btn-sm" id="ncrTabType" onclick="ncrTab('type')" style="background:#e5e7eb;color:#374151">By Audit Type</button>
+      </div>
+    </div>
+    <div id="ncrTrendsContent"><p style="color:var(--text-light);text-align:center;padding:16px">Loading trends…</p></div>
+  </div>
 </div>
 
 <!-- Section Drill-Down Modal -->
@@ -1747,6 +1759,17 @@ function refreshMenu() {
   refreshAPBadge();
 }
 
+function lookupQuestionText(item_id) {
+  for (const [type, def] of Object.entries(AUDITS)) {
+    for (const sec of def.sections) {
+      for (const item of sec.items) {
+        if (item.id === item_id) return item.text;
+      }
+    }
+  }
+  return null;
+}
+
 async function refreshAPBadge() {
   try {
     let q = sb.from('action_plans').select('id', { count: 'exact', head: true })
@@ -2194,6 +2217,37 @@ async function submitAudit() {
       }
     } catch (photoErr) {
       console.warn('Photo handling failed (non-critical):', photoErr);
+    }
+
+    // Auto-create NCRs for non-compliant items (never for daily_compliance)
+    if (currentAuditType !== 'daily_compliance') {
+      try {
+        const ncrs = [];
+        audit.sections.forEach(section => {
+          section.items.forEach(item => {
+            const a = currentAnswers[item.id];
+            if (a && a.answer === 'non-compliant') {
+              ncrs.push({
+                audit_id: auditRow.id,
+                item_id: item.id,
+                item_text: item.text,
+                section_name: section.name,
+                audit_type: auditLabel(currentAuditType),
+                room: room || '',
+                audit_date: auditDate,
+                status: 'open',
+                created_by: currentUser.id
+              });
+            }
+          });
+        });
+        if (ncrs.length > 0) {
+          for (let i = 0; i < ncrs.length; i += 50) {
+            await sb.from('action_plans').insert(ncrs.slice(i, i + 50));
+          }
+          refreshAPBadge();
+        }
+      } catch(ncErr) { console.warn('NCR auto-create (non-critical):', ncErr.message); }
     }
 
     hideSpinner();
@@ -2816,83 +2870,83 @@ function thinBorder() {
 // ===== ACTION PLANS =====
 async function loadActionPlans() {
   const statusFilter = document.getElementById('apFilterStatus').value;
-  const assignedFilter = document.getElementById('apFilterAssigned')?.value || '';
   const isAdmin = currentProfile?.role === 'admin';
-
-  // Show/hide assigned filter for admins
-  const assignedWrap = document.getElementById('apAssignedWrap');
-  if (assignedWrap) assignedWrap.style.display = isAdmin ? '' : 'none';
-
-  // Populate assigned filter
-  const assignedEl = document.getElementById('apFilterAssigned');
-  if (isAdmin && assignedEl && assignedEl.options.length <= 1) {
-    const allStaff = [...lookupTeachers.map(t => t.name), ...lookupInspectors.map(i => i.name)];
-    [...new Set(allStaff)].sort().forEach(name => {
-      assignedEl.innerHTML += '<option value="' + escHtml(name) + '">' + escHtml(name) + '</option>';
-    });
-  }
-
   const container = document.getElementById('apList');
-  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-light)">Loading...</div>';
-
+  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-light)">Loading…</div>';
   try {
-    let q = sb.from('action_plans').select('*').order('due_date', { ascending: true });
+    let q = sb.from('action_plans').select('*').order('audit_date', { ascending: false });
     if (statusFilter) q = q.eq('status', statusFilter);
-    if (!isAdmin) q = q.or('assigned_to.eq.' + (currentProfile.full_name || currentUser.email) + ',created_by.eq.' + currentUser.id);
-    if (isAdmin && assignedFilter) q = q.eq('assigned_to', assignedFilter);
+    if (!isAdmin) q = q.or(`assigned_to.eq.${currentProfile?.full_name || currentUser?.email},created_by.eq.${currentUser.id}`);
     const { data: plans, error } = await q;
     if (error) throw error;
 
     if (!plans || plans.length === 0) {
-      container.innerHTML = '<div class="card" style="text-align:center;padding:24px;color:var(--text-light)">&#128221; No action plans found. They are created from non-compliant items in audit details.</div>';
+      container.innerHTML = '<div class="card" style="text-align:center;padding:24px;color:var(--text-light)">&#10003; No non-compliances found.</div>';
       return;
     }
 
-    const today = todayStr();
-    const groups = { overdue: [], open: [], in_progress: [], resolved: [] };
-    plans.forEach(p => {
-      if (p.status === 'resolved') groups.resolved.push(p);
-      else if (p.due_date && p.due_date < today) groups.overdue.push(p);
-      else if (p.status === 'in_progress') groups.in_progress.push(p);
-      else groups.open.push(p);
-    });
-
+    const open     = plans.filter(p => p.status === 'open' || p.status === 'in_progress');
+    const resolved = plans.filter(p => p.status === 'resolved');
     let html = '';
-    const renderGroup = (title, items, color) => {
-      if (items.length === 0) return '';
-      let rows = '';
-      items.forEach(p => {
-        const isOverdue = p.status !== 'resolved' && p.due_date && p.due_date < today;
-        const dueStr = p.due_date ? formatDate(p.due_date) : '-';
-        const dueFmt = isOverdue ? '<span style="color:var(--danger);font-weight:600">' + dueStr + ' ⚠️</span>' : dueStr;
-        rows += '<tr class="' + (isOverdue ? 'ap-overdue' : '') + '">' +
-          '<td style="font-size:.8rem">' + escHtml(formatDate(p.created_at?.slice(0,10) || '')) + '</td>' +
-          '<td style="font-size:.8rem">' + escHtml(p.audit_type || '-') + '</td>' +
-          '<td style="font-size:.8rem">' + escHtml(p.room || '-') + '</td>' +
-          '<td><strong style="font-size:.8rem">' + escHtml(p.item_id) + '</strong><br><span style="font-size:.75rem;color:var(--text-light)">' + escHtml((p.item_text || '').substring(0,60) + (p.item_text?.length > 60 ? '…' : '')) + '</span></td>' +
-          '<td style="font-size:.8rem">' + escHtml(p.description || '-') + '</td>' +
-          '<td style="font-size:.8rem">' + escHtml(p.assigned_to || '-') + '</td>' +
-          '<td style="font-size:.8rem">' + dueFmt + '</td>' +
-          '<td><span class="ap-status-' + p.status + '">' + p.status.replace('_',' ') + '</span></td>' +
-          '<td style="white-space:nowrap">' + apActionButtons(p, isAdmin) + '</td>' +
-          '</tr>';
-      });
-      return '<div class="card" style="margin-bottom:12px">' +
-        '<h3 style="color:' + color + ';margin-bottom:10px">' + title + ' (' + items.length + ')</h3>' +
-        '<div style="overflow-x:auto"><table class="audit-table" style="min-width:700px"><thead><tr>' +
-        '<th>Date</th><th>Type</th><th>Room</th><th>Item</th><th>Corrective Action</th><th>Assigned To</th><th>Due Date</th><th>Status</th><th>Actions</th>' +
-        '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
-    };
 
-    html += renderGroup('🔴 Overdue', groups.overdue, 'var(--danger)');
-    html += renderGroup('🟡 Open', groups.open, '#92400e');
-    html += renderGroup('🔵 In Progress', groups.in_progress, '#1e40af');
-    if (!statusFilter || statusFilter === 'resolved') {
-      html += renderGroup('✅ Resolved', groups.resolved, 'var(--success)');
+    // ---- Open NCRs ----
+    if (open.length > 0) {
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">' +
+        '<h3 style="color:#dc2626;margin:0">&#9888; Open Non-Compliances</h3>' +
+        '<span style="background:#fee2e2;color:#dc2626;padding:2px 10px;border-radius:10px;font-weight:700;font-size:.82rem">' + open.length + '</span></div>';
+      open.forEach(p => {
+        const qText = lookupQuestionText(p.item_id) || p.item_text || p.item_id;
+        const dateLabel = p.audit_date ? formatDate(p.audit_date) : '';
+        html += '<div class="card" style="margin-bottom:12px;border-left:4px solid #dc2626;padding:14px">' +
+          '<div style="font-weight:600;font-size:.95rem;margin-bottom:6px;line-height:1.4">' + escHtml(qText) + '</div>' +
+          '<div style="margin-bottom:8px">' +
+            '<span style="background:#fee2e2;color:#dc2626;padding:2px 9px;border-radius:10px;font-size:.75rem;font-weight:700">Non-Compliant</span>' +
+          '</div>' +
+          '<div style="font-size:.78rem;color:var(--text-light);margin-bottom:10px;display:flex;flex-wrap:wrap;gap:10px">' +
+            (dateLabel ? '<span>&#128197; ' + escHtml(dateLabel) + '</span>' : '') +
+            (p.room ? '<span>&#127981; ' + escHtml(p.room) + '</span>' : '') +
+            (p.audit_type ? '<span>&#128203; ' + escHtml(p.audit_type) + '</span>' : '') +
+            (p.section_name ? '<span>&#128196; ' + escHtml(p.section_name) + '</span>' : '') +
+          '</div>' +
+          '<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px;margin-bottom:10px">' +
+            '<div style="font-weight:600;font-size:.8rem;color:#92400e;margin-bottom:6px">&#128221; Action Plan</div>' +
+            '<textarea id="apNotes_' + p.id + '" rows="2" style="width:100%;padding:8px;border:1px solid #fcd34d;border-radius:6px;font-size:.85rem;resize:vertical;box-sizing:border-box" placeholder="Describe corrective action taken…">' + escHtml(p.description || '') + '</textarea>' +
+          '</div>';
+        if (isAdmin) {
+          html += '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+            '<button class="btn btn-sm" style="background:#dbeafe;color:#1e40af" onclick="saveAPNotes(\'' + p.id + '\')">&#128190; Save Notes</button>' +
+            '<button class="btn btn-sm" style="background:#d1fae5;color:#065f46" onclick="resolveNCR(\'' + p.id + '\')">&#10003; Mark Resolved</button>' +
+            '<button class="btn btn-sm" style="background:#fee2e2;color:#991b1b" onclick="deleteAP(\'' + p.id + '\')">&#128465; Delete</button>' +
+            '</div>';
+        }
+        html += '</div>';
+      });
     }
+
+    // ---- Resolved NCRs ----
+    if (resolved.length > 0 && (!statusFilter || statusFilter === 'resolved')) {
+      html += '<details style="margin-top:16px"><summary style="cursor:pointer;font-size:.9rem;font-weight:600;color:#065f46;padding:6px 0">' +
+        '&#10003; Resolved Non-Compliances (' + resolved.length + ') — click to expand</summary><div style="margin-top:8px">';
+      resolved.forEach(p => {
+        const qText = lookupQuestionText(p.item_id) || p.item_text || p.item_id;
+        const closedDate = p.resolved_at ? formatDate(p.resolved_at.slice(0,10)) : '';
+        html += '<div class="card" style="margin-bottom:8px;border-left:4px solid #16a34a;padding:12px;opacity:.9">' +
+          '<div style="font-weight:600;font-size:.88rem;margin-bottom:5px;line-height:1.4">' + escHtml(qText) + '</div>' +
+          '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">' +
+            '<span style="background:#dcfce7;color:#16a34a;padding:2px 9px;border-radius:10px;font-size:.75rem;font-weight:700">&#10003; Resolved</span>' +
+            (closedDate ? '<span style="font-size:.75rem;color:var(--text-light)">Closed: ' + escHtml(closedDate) + '</span>' : '') +
+          '</div>' +
+          (p.description ? '<div style="font-size:.8rem;color:var(--text-light);margin-bottom:5px">' + escHtml(p.description) + '</div>' : '') +
+          '<div style="font-size:.75rem;color:var(--text-light)">' + escHtml([p.room, p.audit_type].filter(Boolean).join(' · ')) + '</div>' +
+          (isAdmin ? '<button class="btn btn-sm" style="background:#fee2e2;color:#991b1b;margin-top:6px" onclick="deleteAP(\'' + p.id + '\')">&#128465; Delete</button>' : '') +
+          '</div>';
+      });
+      html += '</div></details>';
+    }
+
     container.innerHTML = html || '<div style="text-align:center;padding:20px;color:var(--text-light)">No plans match the filter.</div>';
   } catch(err) {
-    container.innerHTML = '<div class="card" style="color:var(--danger)">Error loading action plans: ' + escHtml(err.message) + '</div>';
+    container.innerHTML = '<div class="card" style="color:var(--danger)">Error loading: ' + escHtml(err.message) + '</div>';
   }
 }
 
@@ -2905,6 +2959,26 @@ function apActionButtons(p, isAdmin) {
   btns += '<button class="ap-btn" style="background:#d1fae5;color:#065f46;margin-right:4px" onclick="updateAPStatus(\'' + p.id + '\',\'resolved\')">Resolve</button>';
   if (isAdmin) btns += '<button class="ap-btn" style="background:#fee2e2;color:#991b1b" onclick="deleteAP(\'' + p.id + '\')">Delete</button>';
   return btns;
+}
+
+async function saveAPNotes(id) {
+  const el = document.getElementById('apNotes_' + id);
+  if (!el) return;
+  const { error } = await sb.from('action_plans').update({ description: el.value.trim() }).eq('id', id);
+  if (error) { toast('Error saving: ' + error.message, 'error'); return; }
+  toast('Notes saved!', 'success');
+}
+
+async function resolveNCR(id) {
+  if (!confirm('Mark this non-compliance as resolved?')) return;
+  const el = document.getElementById('apNotes_' + id);
+  const upd = { status: 'resolved', resolved_at: new Date().toISOString() };
+  if (el && el.value.trim()) upd.description = el.value.trim();
+  const { error } = await sb.from('action_plans').update(upd).eq('id', id);
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast('✅ Marked as resolved!', 'success');
+  loadActionPlans();
+  refreshAPBadge();
 }
 
 async function updateAPStatus(id, status) {
@@ -3798,6 +3872,9 @@ async function loadDashboard() {
     // Daily Compliance coverage grid (always shown, separate from type filter)
     renderDailyComplianceGrid(dcData || [], fromDate, toDate);
 
+    // NCR Trends
+    renderNCRTrends(fromDate, toDate);
+
     // Save for modal restore after returning from audit detail
     dashboardFiltered = filtered;
     if (teacherDrillState) {
@@ -3810,6 +3887,118 @@ async function loadDashboard() {
   } catch (err) {
     hideSpinner();
     toast('Dashboard error: ' + err.message, 'error');
+  }
+}
+
+let ncrTrendsData = [];
+let ncrCurrentTab = 'centre';
+
+function ncrTab(tab) {
+  ncrCurrentTab = tab;
+  ['centre','room','type'].forEach(t => {
+    const btn = document.getElementById('ncrTab' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (btn) btn.style.cssText = t === tab
+      ? 'background:var(--primary);color:#fff'
+      : 'background:#e5e7eb;color:#374151';
+  });
+  renderNCRTrendsContent(ncrTrendsData, tab);
+}
+
+function renderNCRTrendsContent(plans, tab) {
+  const el = document.getElementById('ncrTrendsContent');
+  if (!el) return;
+  if (!plans || plans.length === 0) {
+    el.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:16px">No non-compliance data for this period.</p>';
+    return;
+  }
+
+  if (tab === 'centre') {
+    // Group by item_id, count occurrences
+    const counts = {};
+    plans.forEach(p => {
+      const key = p.item_id;
+      const text = lookupQuestionText(p.item_id) || p.item_text || p.item_id;
+      if (!counts[key]) counts[key] = { text, count: 0, rooms: new Set() };
+      counts[key].count++;
+      if (p.room) counts[key].rooms.add(p.room);
+    });
+    const sorted = Object.values(counts).sort((a,b) => b.count - a.count).slice(0, 15);
+    if (sorted.length === 0) { el.innerHTML = '<p style="color:var(--text-light);text-align:center">No data.</p>'; return; }
+
+    let html = '<div style="overflow-x:auto"><table class="dash-table" style="width:100%">' +
+      '<thead><tr><th>Question</th><th style="text-align:center;width:80px">Failures</th><th style="text-align:center;width:80px">Classrooms</th><th>Status</th></tr></thead><tbody>';
+    sorted.forEach(r => {
+      const barW = Math.round(r.count / sorted[0].count * 100);
+      html += '<tr>' +
+        '<td style="font-size:.82rem;line-height:1.4">' + escHtml(r.text) + '</td>' +
+        '<td style="text-align:center"><span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-weight:700;font-size:.82rem">' + r.count + '</span></td>' +
+        '<td style="text-align:center;font-size:.82rem">' + r.rooms.size + '</td>' +
+        '<td style="min-width:100px"><div style="background:#fee2e2;border-radius:4px;height:8px;width:' + barW + '%;min-width:4px"></div></td>' +
+        '</tr>';
+    });
+    html += '</tbody></table></div>';
+    el.innerHTML = html;
+
+  } else if (tab === 'room') {
+    const rooms = {};
+    plans.forEach(p => {
+      const room = p.room || '—';
+      const text = lookupQuestionText(p.item_id) || p.item_text || p.item_id;
+      if (!rooms[room]) rooms[room] = {};
+      rooms[room][text] = (rooms[room][text] || 0) + 1;
+    });
+    let html = '';
+    Object.keys(rooms).sort().forEach(room => {
+      const qs = Object.entries(rooms[room]).sort((a,b) => b[1]-a[1]).slice(0, 8);
+      html += '<div class="card" style="margin-bottom:10px;padding:12px">' +
+        '<div style="font-weight:600;font-size:.88rem;color:var(--primary);margin-bottom:8px">&#127981; ' + escHtml(room) + '</div>' +
+        '<div style="overflow-x:auto"><table class="dash-table" style="width:100%"><thead><tr><th>Question</th><th style="text-align:center;width:80px">Failures</th></tr></thead><tbody>';
+      qs.forEach(([text, count]) => {
+        html += '<tr><td style="font-size:.8rem;line-height:1.4">' + escHtml(text) + '</td>' +
+          '<td style="text-align:center"><span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-weight:700;font-size:.8rem">' + count + '</span></td></tr>';
+      });
+      html += '</tbody></table></div></div>';
+    });
+    el.innerHTML = html || '<p style="color:var(--text-light);text-align:center">No data.</p>';
+
+  } else if (tab === 'type') {
+    const types = {};
+    plans.forEach(p => {
+      const type = p.audit_type || '—';
+      const text = lookupQuestionText(p.item_id) || p.item_text || p.item_id;
+      if (!types[type]) types[type] = {};
+      types[type][text] = (types[type][text] || 0) + 1;
+    });
+    let html = '';
+    Object.keys(types).sort().forEach(type => {
+      const qs = Object.entries(types[type]).sort((a,b) => b[1]-a[1]).slice(0, 8);
+      html += '<div class="card" style="margin-bottom:10px;padding:12px">' +
+        '<div style="font-weight:600;font-size:.88rem;color:var(--primary);margin-bottom:8px">&#128203; ' + escHtml(type) + '</div>' +
+        '<div style="overflow-x:auto"><table class="dash-table" style="width:100%"><thead><tr><th>Question</th><th style="text-align:center;width:80px">Failures</th></tr></thead><tbody>';
+      qs.forEach(([text, count]) => {
+        html += '<tr><td style="font-size:.8rem;line-height:1.4">' + escHtml(text) + '</td>' +
+          '<td style="text-align:center"><span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-weight:700;font-size:.8rem">' + count + '</span></td></tr>';
+      });
+      html += '</tbody></table></div></div>';
+    });
+    el.innerHTML = html || '<p style="color:var(--text-light);text-align:center">No data.</p>';
+  }
+}
+
+async function renderNCRTrends(fromDate, toDate) {
+  const el = document.getElementById('ncrTrendsContent');
+  if (!el) return;
+  try {
+    let q = sb.from('action_plans').select('item_id, item_text, audit_type, room, audit_date, status')
+      .order('audit_date', { ascending: false });
+    if (fromDate) q = q.gte('audit_date', fromDate);
+    if (toDate) q = q.lte('audit_date', toDate);
+    const { data, error } = await q;
+    if (error) throw error;
+    ncrTrendsData = data || [];
+    renderNCRTrendsContent(ncrTrendsData, ncrCurrentTab);
+  } catch(err) {
+    if (el) el.innerHTML = '<p style="color:var(--danger);text-align:center">Error loading trends: ' + escHtml(err.message) + '</p>';
   }
 }
 
