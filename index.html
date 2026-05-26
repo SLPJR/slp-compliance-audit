@@ -375,10 +375,12 @@ input,select,textarea{font-family:inherit;font-size:1rem}
     <h3 style="margin-bottom:10px">Audit Information</h3>
     <div class="audit-info-grid">
       <div class="form-group"><label>Date</label><input type="date" id="auditDate"></div>
-      <div class="form-group" id="fieldRoom"><label>Room / Classroom</label><select id="auditRoom"><option value="">-- Select --</option></select></div>
+      <div class="form-group" id="fieldRoom"><label>Room / Classroom</label><select id="auditRoom" onchange="onRoomChange()"><option value="">-- Select --</option></select></div>
       <div class="form-group"><label>Inspector</label><select id="auditInspector"><option value="">-- Select --</option></select></div>
       <div class="form-group" id="fieldTeacher1"><label>Teacher 1</label><select id="auditTeacher1"><option value="">-- Select --</option></select></div>
       <div class="form-group" id="fieldTeacher2"><label>Teacher 2</label><select id="auditTeacher2"><option value="">-- Select --</option><option value="">N/A</option></select></div>
+      <div class="form-group" id="fieldTeacher3" style="display:none"><label>Teacher 3</label><select id="auditTeacher3"><option value="">-- Select --</option></select></div>
+      <div class="form-group" id="fieldTeacher4" style="display:none"><label>Teacher 4</label><select id="auditTeacher4"><option value="">-- Select --</option></select></div>
     </div>
   </div>
   <div id="auditSections"></div>
@@ -1794,6 +1796,18 @@ async function refreshAPBadge() {
 // ===== AUDIT FORM =====
 let auditTempKey = '';
 
+// Show/hide extra teacher fields for No Nappers Mix Group (daily compliance only)
+function onRoomChange() {
+  const room = document.getElementById('auditRoom').value;
+  const isNoNappers = (currentAuditType === 'daily_compliance' && room === 'No Nappers Mix Group');
+  document.getElementById('fieldTeacher3').style.display = isNoNappers ? '' : 'none';
+  document.getElementById('fieldTeacher4').style.display = isNoNappers ? '' : 'none';
+  if (!isNoNappers) {
+    document.getElementById('auditTeacher3').value = '';
+    document.getElementById('auditTeacher4').value = '';
+  }
+}
+
 function startAudit(type) {
   navigate('audit/' + type);
 }
@@ -1822,6 +1836,11 @@ function initAuditForm(type) {
   populateSelect('auditInspector', lookupInspectors);
   populateSelect('auditTeacher1', lookupTeachers);
   populateSelect('auditTeacher2', lookupTeachers, true);
+  populateSelect('auditTeacher3', lookupTeachers, true);
+  populateSelect('auditTeacher4', lookupTeachers, true);
+  // Extra teacher fields hidden by default; onRoomChange() shows them for No Nappers Mix Group
+  document.getElementById('fieldTeacher3').style.display = 'none';
+  document.getElementById('fieldTeacher4').style.display = 'none';
 
   const container = document.getElementById('auditSections');
   container.innerHTML = '';
@@ -2086,6 +2105,8 @@ async function submitAudit() {
   const inspector = document.getElementById('auditInspector').value.trim();
   const teacher1 = document.getElementById('auditTeacher1').value.trim();
   const teacher2 = document.getElementById('auditTeacher2').value.trim();
+  const teacher3 = document.getElementById('auditTeacher3').value.trim();
+  const teacher4 = document.getElementById('auditTeacher4').value.trim();
 
   if (!auditDate) { toast('Please enter audit date', 'error'); return; }
   if (!inspector) { toast('Please select an inspector', 'error'); return; }
@@ -2138,6 +2159,8 @@ async function submitAudit() {
       inspector: inspector,
       teacher1: teacher1,
       teacher2: teacher2,
+      teacher3: teacher3 || null,
+      teacher4: teacher4 || null,
       total_achieved: totalAchieved,
       total_max: totalMax,
       total_pct: totalPct
@@ -2421,6 +2444,8 @@ async function loadAuditDetail(auditId) {
       'Date: ' + formatDate(audit.audit_date) + ' &nbsp;|&nbsp; Room: ' + escHtml(audit.room || '-') +
       ' &nbsp;|&nbsp; Inspector: ' + escHtml(audit.inspector || '-') +
       '<br>Teacher 1: ' + escHtml(audit.teacher1 || '-') + ' &nbsp;|&nbsp; Teacher 2: ' + escHtml(audit.teacher2 || '-') +
+      (audit.teacher3 ? ' &nbsp;|&nbsp; Teacher 3: ' + escHtml(audit.teacher3) : '') +
+      (audit.teacher4 ? ' &nbsp;|&nbsp; Teacher 4: ' + escHtml(audit.teacher4) : '') +
       '<br>Score: ' + audit.total_achieved + ' / ' + audit.total_max;
     const scoreBadge = document.getElementById('detailScore');
     scoreBadge.textContent = pct + '%';
@@ -2584,6 +2609,11 @@ async function exportAuditZip() {
     ]);
     fmtRows.push([
       { v: 'Teacher 2:', s: infoLabelStyle }, { v: audit.teacher2 || 'N/A', s: infoValueStyle },
+      { v: '', s: {} },
+      { v: audit.teacher3 ? 'Teacher 3:' : '', s: infoLabelStyle }, { v: audit.teacher3 || '', s: infoValueStyle }, { v: '', s: {} }, { v: '', s: {} }
+    ]);
+    if (audit.teacher4) fmtRows.push([
+      { v: 'Teacher 4:', s: infoLabelStyle }, { v: audit.teacher4, s: infoValueStyle },
       { v: '', s: {} }, { v: '', s: {} }, { v: '', s: {} }, { v: '', s: {} }, { v: '', s: {} }
     ]);
 
@@ -2708,6 +2738,10 @@ async function exportAuditZip() {
       { v: 'Teacher 1:', s: sumInfoLabel }, { v: audit.teacher1 || 'N/A', s: sumInfoVal },
       { v: '', s: {} }, { v: 'Teacher 2:', s: sumInfoLabel }, { v: audit.teacher2 || 'N/A', s: sumInfoVal }
     ]);
+    if (audit.teacher3 || audit.teacher4) sumRows.push([
+      { v: audit.teacher3 ? 'Teacher 3:' : '', s: sumInfoLabel }, { v: audit.teacher3 || '', s: sumInfoVal },
+      { v: '', s: {} }, { v: audit.teacher4 ? 'Teacher 4:' : '', s: sumInfoLabel }, { v: audit.teacher4 || '', s: sumInfoVal }
+    ]);
     // Blank row
     sumRows.push([{ v: '', s: {} }]);
     // Weight guide
@@ -2798,6 +2832,8 @@ async function exportAuditZip() {
     plainWsData.push(['Inspector', audit.inspector]);
     plainWsData.push(['Teacher 1', audit.teacher1]);
     plainWsData.push(['Teacher 2', audit.teacher2]);
+    if (audit.teacher3) plainWsData.push(['Teacher 3', audit.teacher3]);
+    if (audit.teacher4) plainWsData.push(['Teacher 4', audit.teacher4]);
 
     const plainWb = XLSX.utils.book_new();
     const plainWs = XLSX.utils.aoa_to_sheet(plainWsData);
@@ -3331,7 +3367,7 @@ async function loadDashboard() {
 
     let filtered = audits || [];
     if (teacherFilters.length > 0) {
-      filtered = filtered.filter(a => teacherFilters.includes(a.teacher1) || teacherFilters.includes(a.teacher2));
+      filtered = filtered.filter(a => teacherFilters.includes(a.teacher1) || teacherFilters.includes(a.teacher2) || teacherFilters.includes(a.teacher3) || teacherFilters.includes(a.teacher4));
     }
     const scoreRange = document.getElementById('dashScoreRange').value;
     if (scoreRange) {
@@ -3427,6 +3463,8 @@ async function loadDashboard() {
         };
         if (audit.teacher1) addT(audit.teacher1);
         if (audit.teacher2) addT(audit.teacher2);
+        if (audit.teacher3) addT(audit.teacher3);
+        if (audit.teacher4) addT(audit.teacher4);
       });
       const stBody = document.getElementById('sectionTeacherBody');
       stBody.innerHTML = '';
@@ -3624,6 +3662,8 @@ async function loadDashboard() {
       };
       if (a.teacher1) addTeacher(a.teacher1);
       if (a.teacher2) addTeacher(a.teacher2);
+      if (a.teacher3) addTeacher(a.teacher3);
+      if (a.teacher4) addTeacher(a.teacher4);
     });
 
     const teacherBody = document.getElementById('teacherBody');
@@ -3652,7 +3692,7 @@ async function loadDashboard() {
     // ---- Chart: Avg Score by Teacher (sorted high→low) ----
     const byTeacherScore = {};
     filtered.forEach(a => {
-      [a.teacher1, a.teacher2].filter(Boolean).forEach(t => {
+      [a.teacher1, a.teacher2, a.teacher3, a.teacher4].filter(Boolean).forEach(t => {
         if (!byTeacherScore[t]) byTeacherScore[t] = { sum: 0, count: 0 };
         byTeacherScore[t].sum += (a.total_pct || 0);
         byTeacherScore[t].count++;
@@ -4038,7 +4078,7 @@ async function renderNCRTrends(fromDate, toDate) {
 
 function showTeacherAuditList(teacher, auditTypeLabel, filtered) {
   const matches = filtered.filter(a =>
-    (a.teacher1 === teacher || a.teacher2 === teacher) &&
+    (a.teacher1 === teacher || a.teacher2 === teacher || a.teacher3 === teacher || a.teacher4 === teacher) &&
     auditLabel(a.audit_type) === auditTypeLabel
   ).sort((a, b) => b.audit_date.localeCompare(a.audit_date));
 
@@ -4099,7 +4139,7 @@ async function showSectionDrill(allAnswers, filtered, sectionName, auditType, te
     const audit = auditMap[ans.audit_id];
     if (!audit) return false;
     if (auditLabel(audit.audit_type) !== auditType) return false;
-    if (teacher && audit.teacher1 !== teacher && audit.teacher2 !== teacher) return false;
+    if (teacher && audit.teacher1 !== teacher && audit.teacher2 !== teacher && audit.teacher3 !== teacher && audit.teacher4 !== teacher) return false;
     if (room && (audit.room || '-') !== room) return false;
     return true;
   });
