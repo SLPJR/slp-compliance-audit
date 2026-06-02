@@ -643,6 +643,14 @@ input,select,textarea{font-family:inherit;font-size:1rem}
         <option value="">All Classrooms</option>
       </select>
     </div>
+    <div class="form-group" style="margin-bottom:0;flex:1;min-width:110px">
+      <label>From Date</label>
+      <input type="date" id="apFilterDateFrom">
+    </div>
+    <div class="form-group" style="margin-bottom:0;flex:1;min-width:110px">
+      <label>To Date</label>
+      <input type="date" id="apFilterDateTo">
+    </div>
     <div class="form-group" id="apAssignedWrap" style="margin-bottom:0;flex:1;min-width:120px;display:none">
       <label>Assigned To</label>
       <select id="apFilterAssigned"><option value="">All Staff</option></select>
@@ -2264,7 +2272,8 @@ async function submitAudit() {
                 room: room || '',
                 audit_date: auditDate,
                 status: 'open',
-                created_by: currentUser.id
+                created_by: currentUser.id,
+                audit_comment: a.comment || null
               });
             }
           });
@@ -2912,6 +2921,8 @@ function thinBorder() {
 async function loadActionPlans() {
   const statusFilter = document.getElementById('apFilterStatus').value;
   const roomFilter   = document.getElementById('apFilterRoom')?.value || '';
+  const dateFrom     = document.getElementById('apFilterDateFrom')?.value || '';
+  const dateTo       = document.getElementById('apFilterDateTo')?.value || '';
   const isAdmin = currentProfile?.role === 'admin';
   const container = document.getElementById('apList');
   container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-light)">Loading…</div>';
@@ -2931,7 +2942,9 @@ async function loadActionPlans() {
     let q = sb.from('action_plans').select('*').order('audit_date', { ascending: false });
     if (statusFilter === 'open') q = q.in('status', ['open', 'in_progress']);
     else if (statusFilter) q = q.eq('status', statusFilter);
-    if (roomFilter)   q = q.eq('room', roomFilter);
+    if (roomFilter) q = q.eq('room', roomFilter);
+    if (dateFrom)   q = q.gte('audit_date', dateFrom);
+    if (dateTo)     q = q.lte('audit_date', dateTo);
     if (!isAdmin) q = q.or(`assigned_to.eq.${currentProfile?.full_name || currentUser?.email},created_by.eq.${currentUser.id}`);
     const { data: plans, error } = await q;
     if (error) throw error;
@@ -2964,6 +2977,10 @@ async function loadActionPlans() {
             (p.audit_type ? '<span>&#128203; ' + escHtml(p.audit_type) + '</span>' : '') +
             (p.section_name ? '<span>&#128196; ' + escHtml(p.section_name) + '</span>' : '') +
           '</div>' +
+          (p.audit_comment ? '<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px;margin-bottom:10px">' +
+            '<div style="font-weight:600;font-size:.8rem;color:#0369a1;margin-bottom:5px">&#128172; Auditor\'s Observation</div>' +
+            '<div style="font-size:.85rem;color:#0c4a6e;line-height:1.5;white-space:pre-wrap">' + escHtml(p.audit_comment) + '</div>' +
+          '</div>' : '') +
           '<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px;margin-bottom:10px">' +
             '<div style="font-weight:600;font-size:.8rem;color:#92400e;margin-bottom:6px">&#128221; Action Plan</div>' +
             '<textarea id="apNotes_' + p.id + '" rows="2" style="width:100%;padding:8px;border:1px solid #fcd34d;border-radius:6px;font-size:.85rem;resize:vertical;box-sizing:border-box" placeholder="Describe corrective action taken…">' + escHtml(p.description || '') + '</textarea>' +
@@ -2992,7 +3009,11 @@ async function loadActionPlans() {
             '<span style="background:#dcfce7;color:#16a34a;padding:2px 9px;border-radius:10px;font-size:.75rem;font-weight:700">&#10003; Resolved</span>' +
             (closedDate ? '<span style="font-size:.75rem;color:var(--text-light)">Closed: ' + escHtml(closedDate) + '</span>' : '') +
           '</div>' +
-          (p.description ? '<div style="font-size:.8rem;color:var(--text-light);margin-bottom:5px">' + escHtml(p.description) + '</div>' : '') +
+          (p.audit_comment ? '<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:8px;margin-bottom:6px">' +
+            '<div style="font-weight:600;font-size:.75rem;color:#0369a1;margin-bottom:3px">&#128172; Auditor\'s Observation</div>' +
+            '<div style="font-size:.8rem;color:#0c4a6e;line-height:1.4;white-space:pre-wrap">' + escHtml(p.audit_comment) + '</div>' +
+          '</div>' : '') +
+          (p.description ? '<div style="font-size:.8rem;color:var(--text-light);margin-bottom:5px"><strong>Action taken:</strong> ' + escHtml(p.description) + '</div>' : '') +
           '<div style="font-size:.75rem;color:var(--text-light)">' + escHtml([p.room, p.audit_type].filter(Boolean).join(' · ')) + '</div>' +
           (isAdmin ? '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">' +
             '<button class="btn btn-sm" style="background:#fef9c3;color:#92400e" onclick="unresolveNCR(\'' + p.id + '\')">&#8635; Reopen</button>' +
