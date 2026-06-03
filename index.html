@@ -2344,6 +2344,7 @@ async function submitAudit() {
                 audit_date: auditDate,
                 status: 'open',
                 created_by: currentUser.id,
+                recorded_by: inspector || null,
                 audit_comment: a.comment || null
               });
             }
@@ -3047,6 +3048,7 @@ async function loadActionPlans() {
             (p.room ? '<span>&#127981; ' + escHtml(p.room) + '</span>' : '') +
             (p.audit_type ? '<span>&#128203; ' + escHtml(p.audit_type) + '</span>' : '') +
             (p.section_name ? '<span>&#128196; ' + escHtml(p.section_name) + '</span>' : '') +
+            (p.recorded_by ? '<span>&#128100; Recorded by: <strong>' + escHtml(p.recorded_by) + '</strong></span>' : '') +
           '</div>' +
           (p.audit_comment ? '<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px;margin-bottom:10px">' +
             '<div style="font-weight:600;font-size:.8rem;color:#0369a1;margin-bottom:5px">&#128172; Auditor\'s Observation</div>' +
@@ -3081,6 +3083,12 @@ async function loadActionPlans() {
         const closedDate = p.resolved_at ? formatDate(p.resolved_at.slice(0,10)) : '';
         html += '<div class="card" style="margin-bottom:8px;border-left:4px solid #16a34a;padding:12px;opacity:.9">' +
           '<div style="font-weight:600;font-size:.88rem;margin-bottom:5px;line-height:1.4">' + escHtml(qText) + '</div>' +
+          '<div style="font-size:.75rem;color:var(--text-light);margin-bottom:6px;display:flex;flex-wrap:wrap;gap:8px">' +
+            (p.audit_date ? '<span>&#128197; ' + escHtml(formatDate(p.audit_date)) + '</span>' : '') +
+            (p.room ? '<span>&#127981; ' + escHtml(p.room) + '</span>' : '') +
+            (p.audit_type ? '<span>&#128203; ' + escHtml(p.audit_type) + '</span>' : '') +
+            (p.recorded_by ? '<span>&#128100; Recorded by: <strong>' + escHtml(p.recorded_by) + '</strong></span>' : '') +
+          '</div>' +
           '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">' +
             '<span style="background:#dcfce7;color:#16a34a;padding:2px 9px;border-radius:10px;font-size:.75rem;font-weight:700">&#10003; Resolved</span>' +
             (p.resolved_by ? '<span style="font-size:.75rem;color:#065f46;font-weight:600">by ' + escHtml(p.resolved_by) + '</span>' : '') +
@@ -4223,6 +4231,7 @@ function showNCRDrillDown(itemId, auditType, room) {
           (p.audit_date ? '<span style="font-size:.78rem;color:var(--text-light)">&#128197; ' + escHtml(formatDate(p.audit_date)) + '</span>' : '') +
           (p.room ? '<span style="font-size:.78rem;color:var(--text-light)">&#127981; ' + escHtml(p.room) + '</span>' : '') +
           (p.audit_type ? '<span style="font-size:.78rem;color:var(--text-light)">&#128203; ' + escHtml(normalizeAuditType(p.audit_type)) + '</span>' : '') +
+          (p.recorded_by ? '<span style="font-size:.78rem;color:var(--text-light)">&#128100; ' + escHtml(p.recorded_by) + '</span>' : '') +
         '</div>';
       if (p.audit_comment) {
         html += '<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:8px;margin-bottom:8px">' +
