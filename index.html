@@ -660,6 +660,16 @@ input,select,textarea{font-family:inherit;font-size:1rem}
   <div id="apList"></div>
 </div>
 
+<!-- NCR Drill-Down Modal -->
+<div id="ncrDrillModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;overflow-y:auto">
+  <div style="background:#fff;max-width:640px;margin:40px auto 40px;border-radius:12px;padding:24px;position:relative">
+    <button onclick="document.getElementById('ncrDrillModal').style.display='none'" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#666">&times;</button>
+    <h3 id="ncrDrillTitle" style="margin:0 36px 4px 0;color:var(--primary);font-size:.95rem;line-height:1.4"></h3>
+    <p style="font-size:.78rem;color:var(--text-light);margin-bottom:16px">Non-compliance history for this question</p>
+    <div id="ncrDrillContent"></div>
+  </div>
+</div>
+
 <!-- Action Plan Create/Edit Modal -->
 <div id="apModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;overflow-y:auto">
   <div style="background:#fff;max-width:520px;margin:40px auto;border-radius:12px;padding:24px;position:relative">
@@ -4076,6 +4086,21 @@ function ncrTab(tab) {
   renderNCRTrendsContent(ncrTrendsData, tab);
 }
 
+// Normalize legacy audit type labels to current canonical labels
+function normalizeAuditType(label) {
+  const norm = { 'AHS': 'AHS Audit', 'Admin & Facility': 'Centre Admin & Facility', 'Admin': 'Centre Admin & Facility' };
+  return norm[label] || label;
+}
+
+// Build a clickable failure-count badge (data attributes avoid escaping issues)
+function ncrBadge(itemId, filterType, filterRoom, count) {
+  const t = filterType || '';
+  const r = filterRoom || '';
+  return '<span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-weight:700;font-size:.82rem;cursor:pointer;text-decoration:underline dotted" ' +
+    'title="Click to see individual non-compliances" ' +
+    'onclick="handleNCRDrillClick(this)" data-item="' + escHtml(itemId) + '" data-type="' + escHtml(t) + '" data-room="' + escHtml(r) + '">' + count + '</span>';
+}
+
 function renderNCRTrendsContent(plans, tab) {
   const el = document.getElementById('ncrTrendsContent');
   if (!el) return;
@@ -4085,7 +4110,6 @@ function renderNCRTrendsContent(plans, tab) {
   }
 
   if (tab === 'centre') {
-    // Group by item_id, count occurrences
     const counts = {};
     plans.forEach(p => {
       const key = p.item_id;
@@ -4094,16 +4118,18 @@ function renderNCRTrendsContent(plans, tab) {
       counts[key].count++;
       if (p.room) counts[key].rooms.add(p.room);
     });
-    const sorted = Object.values(counts).sort((a,b) => b.count - a.count).slice(0, 15);
+    const sorted = Object.entries(counts).sort((a,b) => b[1].count - a[1].count).slice(0, 15);
     if (sorted.length === 0) { el.innerHTML = '<p style="color:var(--text-light);text-align:center">No data.</p>'; return; }
 
-    let html = '<div style="overflow-x:auto"><table class="dash-table" style="width:100%">' +
-      '<thead><tr><th>Question</th><th style="text-align:center;width:80px">Failures</th><th style="text-align:center;width:80px">Classrooms</th><th>Status</th></tr></thead><tbody>';
-    sorted.forEach(r => {
-      const barW = Math.round(r.count / sorted[0].count * 100);
+    let html = '<p style="font-size:.75rem;color:var(--text-light);margin-bottom:8px">Click a failure count to see the individual records.</p>' +
+      '<div style="overflow-x:auto"><table class="dash-table" style="width:100%">' +
+      '<thead><tr><th>Question</th><th style="text-align:center;width:80px">Failures</th><th style="text-align:center;width:80px">Classrooms</th><th>Bar</th></tr></thead><tbody>';
+    const maxCount = sorted[0][1].count;
+    sorted.forEach(([itemId, r]) => {
+      const barW = Math.round(r.count / maxCount * 100);
       html += '<tr>' +
         '<td style="font-size:.82rem;line-height:1.4">' + escHtml(r.text) + '</td>' +
-        '<td style="text-align:center"><span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-weight:700;font-size:.82rem">' + r.count + '</span></td>' +
+        '<td style="text-align:center">' + ncrBadge(itemId, null, null, r.count) + '</td>' +
         '<td style="text-align:center;font-size:.82rem">' + r.rooms.size + '</td>' +
         '<td style="min-width:100px"><div style="background:#fee2e2;border-radius:4px;height:8px;width:' + barW + '%;min-width:4px"></div></td>' +
         '</tr>';
@@ -4115,19 +4141,21 @@ function renderNCRTrendsContent(plans, tab) {
     const rooms = {};
     plans.forEach(p => {
       const room = p.room || '—';
+      const key = p.item_id;
       const text = lookupQuestionText(p.item_id) || p.item_text || p.item_id;
       if (!rooms[room]) rooms[room] = {};
-      rooms[room][text] = (rooms[room][text] || 0) + 1;
+      if (!rooms[room][key]) rooms[room][key] = { text, count: 0 };
+      rooms[room][key].count++;
     });
-    let html = '';
+    let html = '<p style="font-size:.75rem;color:var(--text-light);margin-bottom:8px">Click a failure count to see the individual records.</p>';
     Object.keys(rooms).sort().forEach(room => {
-      const qs = Object.entries(rooms[room]).sort((a,b) => b[1]-a[1]).slice(0, 8);
+      const qs = Object.entries(rooms[room]).sort((a,b) => b[1].count - a[1].count).slice(0, 8);
       html += '<div class="card" style="margin-bottom:10px;padding:12px">' +
         '<div style="font-weight:600;font-size:.88rem;color:var(--primary);margin-bottom:8px">&#127981; ' + escHtml(room) + '</div>' +
         '<div style="overflow-x:auto"><table class="dash-table" style="width:100%"><thead><tr><th>Question</th><th style="text-align:center;width:80px">Failures</th></tr></thead><tbody>';
-      qs.forEach(([text, count]) => {
+      qs.forEach(([itemId, { text, count }]) => {
         html += '<tr><td style="font-size:.8rem;line-height:1.4">' + escHtml(text) + '</td>' +
-          '<td style="text-align:center"><span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-weight:700;font-size:.8rem">' + count + '</span></td></tr>';
+          '<td style="text-align:center">' + ncrBadge(itemId, null, room, count) + '</td></tr>';
       });
       html += '</tbody></table></div></div>';
     });
@@ -4136,20 +4164,22 @@ function renderNCRTrendsContent(plans, tab) {
   } else if (tab === 'type') {
     const types = {};
     plans.forEach(p => {
-      const type = p.audit_type || '—';
+      const type = normalizeAuditType(p.audit_type || '—');
+      const key = p.item_id;
       const text = lookupQuestionText(p.item_id) || p.item_text || p.item_id;
       if (!types[type]) types[type] = {};
-      types[type][text] = (types[type][text] || 0) + 1;
+      if (!types[type][key]) types[type][key] = { text, count: 0 };
+      types[type][key].count++;
     });
-    let html = '';
+    let html = '<p style="font-size:.75rem;color:var(--text-light);margin-bottom:8px">Click a failure count to see the individual records.</p>';
     Object.keys(types).sort().forEach(type => {
-      const qs = Object.entries(types[type]).sort((a,b) => b[1]-a[1]).slice(0, 8);
+      const qs = Object.entries(types[type]).sort((a,b) => b[1].count - a[1].count).slice(0, 8);
       html += '<div class="card" style="margin-bottom:10px;padding:12px">' +
         '<div style="font-weight:600;font-size:.88rem;color:var(--primary);margin-bottom:8px">&#128203; ' + escHtml(type) + '</div>' +
         '<div style="overflow-x:auto"><table class="dash-table" style="width:100%"><thead><tr><th>Question</th><th style="text-align:center;width:80px">Failures</th></tr></thead><tbody>';
-      qs.forEach(([text, count]) => {
+      qs.forEach(([itemId, { text, count }]) => {
         html += '<tr><td style="font-size:.8rem;line-height:1.4">' + escHtml(text) + '</td>' +
-          '<td style="text-align:center"><span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-weight:700;font-size:.8rem">' + count + '</span></td></tr>';
+          '<td style="text-align:center">' + ncrBadge(itemId, type, null, count) + '</td></tr>';
       });
       html += '</tbody></table></div></div>';
     });
@@ -4157,11 +4187,74 @@ function renderNCRTrendsContent(plans, tab) {
   }
 }
 
+function handleNCRDrillClick(el) {
+  showNCRDrillDown(
+    el.getAttribute('data-item'),
+    el.getAttribute('data-type') || null,
+    el.getAttribute('data-room') || null
+  );
+}
+
+function showNCRDrillDown(itemId, auditType, room) {
+  const modal   = document.getElementById('ncrDrillModal');
+  const title   = document.getElementById('ncrDrillTitle');
+  const content = document.getElementById('ncrDrillContent');
+
+  const qText = lookupQuestionText(itemId) || itemId;
+  title.textContent = qText;
+
+  let records = ncrTrendsData.filter(p => p.item_id === itemId);
+  if (auditType) records = records.filter(p => normalizeAuditType(p.audit_type) === auditType);
+  if (room)      records = records.filter(p => (p.room || '—') === room);
+  records.sort((a, b) => (b.audit_date || '').localeCompare(a.audit_date || ''));
+
+  if (records.length === 0) {
+    content.innerHTML = '<p style="color:var(--text-light);text-align:center">No records found.</p>';
+  } else {
+    let html = '';
+    records.forEach(p => {
+      const isResolved = p.status === 'resolved';
+      const statusColor = isResolved ? '#16a34a' : '#dc2626';
+      const statusBg    = isResolved ? '#dcfce7'  : '#fee2e2';
+      const statusLabel = isResolved ? '&#10003; Resolved' : '&#9888; Open';
+      html += '<div style="border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-bottom:10px">' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">' +
+          '<span style="background:' + statusBg + ';color:' + statusColor + ';padding:2px 9px;border-radius:10px;font-size:.75rem;font-weight:700">' + statusLabel + '</span>' +
+          (p.audit_date ? '<span style="font-size:.78rem;color:var(--text-light)">&#128197; ' + escHtml(formatDate(p.audit_date)) + '</span>' : '') +
+          (p.room ? '<span style="font-size:.78rem;color:var(--text-light)">&#127981; ' + escHtml(p.room) + '</span>' : '') +
+          (p.audit_type ? '<span style="font-size:.78rem;color:var(--text-light)">&#128203; ' + escHtml(normalizeAuditType(p.audit_type)) + '</span>' : '') +
+        '</div>';
+      if (p.audit_comment) {
+        html += '<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:8px;margin-bottom:8px">' +
+          '<div style="font-weight:600;font-size:.75rem;color:#0369a1;margin-bottom:3px">&#128172; Auditor\'s Observation</div>' +
+          '<div style="font-size:.82rem;color:#0c4a6e;line-height:1.4;white-space:pre-wrap">' + escHtml(p.audit_comment) + '</div>' +
+          '</div>';
+      }
+      if (p.description) {
+        html += '<div style="font-size:.82rem;margin-bottom:6px;color:var(--text-light)"><strong style="color:var(--text)">Action taken:</strong> ' + escHtml(p.description) + '</div>';
+      }
+      if (isResolved && p.resolved_by) {
+        html += '<div style="font-size:.75rem;color:#065f46;margin-bottom:6px">&#10003; Closed by: <strong>' + escHtml(p.resolved_by) + '</strong>' +
+          (p.resolved_at ? ' on ' + escHtml(formatDate(p.resolved_at.slice(0,10))) : '') + '</div>';
+      }
+      if (p.closure_photo) {
+        html += '<div style="margin-top:4px"><img src="' + escHtml(p.closure_photo) + '" ' +
+          'onclick="openLightbox(this.getAttribute(\'src\'))" ' +
+          'style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:2px solid #16a34a;cursor:pointer" title="Closure evidence photo">' +
+          '<div style="font-size:.7rem;color:#065f46;margin-top:2px">&#128247; Closure evidence</div></div>';
+      }
+      html += '</div>';
+    });
+    content.innerHTML = html;
+  }
+  modal.style.display = 'block';
+}
+
 async function renderNCRTrends(fromDate, toDate) {
   const el = document.getElementById('ncrTrendsContent');
   if (!el) return;
   try {
-    let q = sb.from('action_plans').select('item_id, item_text, audit_type, room, audit_date, status')
+    let q = sb.from('action_plans').select('*')
       .order('audit_date', { ascending: false });
     if (fromDate) q = q.gte('audit_date', fromDate);
     if (toDate) q = q.lte('audit_date', toDate);
