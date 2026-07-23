@@ -3082,13 +3082,11 @@ async function loadActionPlans() {
             '</div>' +
             '<div id="apPhoto_' + p.id + '"></div>' +
           '</div>';
-        if (isAdmin) {
-          html += '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-            '<button class="btn btn-sm" style="background:#dbeafe;color:#1e40af" onclick="saveAPNotes(\'' + p.id + '\')">&#128190; Save Notes</button>' +
-            '<button class="btn btn-sm" style="background:#d1fae5;color:#065f46" onclick="resolveNCR(\'' + p.id + '\')">&#10003; Mark Resolved</button>' +
-            '<button class="btn btn-sm" style="background:#fee2e2;color:#991b1b" onclick="deleteAP(\'' + p.id + '\')">&#128465; Delete</button>' +
-            '</div>';
-        }
+        html += '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+          '<button class="btn btn-sm" style="background:#dbeafe;color:#1e40af" onclick="saveAPNotes(\'' + p.id + '\')">&#128190; Save Notes</button>' +
+          '<button class="btn btn-sm" style="background:#d1fae5;color:#065f46" onclick="resolveNCR(\'' + p.id + '\')">&#10003; Mark Resolved</button>' +
+          (isAdmin ? '<button class="btn btn-sm" style="background:#fee2e2;color:#991b1b" onclick="deleteAP(\'' + p.id + '\')">&#128465; Delete</button>' : '') +
+          '</div>';
         html += '</div>';
       });
     }
