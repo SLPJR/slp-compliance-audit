@@ -3424,12 +3424,10 @@ async function renderMonthlyAuditCoverage() {
       macData[t.key] = { label: t.label, roomBased: t.roomBased, rooms, months, covered };
     });
 
-    // Build tab buttons
+    // Build tab buttons — always show all 5 tabs
     const tabsEl = document.getElementById('macTabs');
     tabsEl.innerHTML = '';
     TYPES.forEach((t, i) => {
-      const hasData = audits.some(a => a.audit_type === t.key);
-      if (!hasData) return;
       const btn = document.createElement('button');
       btn.className = 'btn btn-sm';
       btn.id = 'macTab_' + t.key;
@@ -3440,14 +3438,7 @@ async function renderMonthlyAuditCoverage() {
     });
 
     panel.style.display = '';
-    const firstTab = TYPES.find(t => audits.some(a => a.audit_type === t.key));
-    if (firstTab) {
-      // Reset all tabs to default style, then activate first
-      document.querySelectorAll('[id^="macTab_"]').forEach(b => b.style.cssText = 'background:#e5e7eb;color:#374151');
-      const fb = document.getElementById('macTab_' + firstTab.key);
-      if (fb) fb.style.cssText = 'background:var(--primary);color:#fff;font-weight:600';
-      renderMACGrid(firstTab.key);
-    }
+    renderMACGrid(TYPES[0].key);
   } catch(err) {
     console.warn('Monthly audit coverage error:', err.message);
   }
