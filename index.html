@@ -572,6 +572,22 @@ input,select,textarea{font-family:inherit;font-size:1rem}
     <div id="dcMissingSummary" style="margin-top:8px"></div>
   </div>
 
+  <!-- Monthly Audit Coverage by Type -->
+  <div class="card" id="monthlyAuditPanel" style="margin-bottom:0;display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+      <h3 style="margin:0;color:var(--primary)">&#128197; Monthly Audit Coverage</h3>
+    </div>
+    <p style="font-size:.82rem;color:var(--text-light);margin:0 0 10px">
+      Target: one audit per classroom per month (Admin &amp; Facility: one per month).
+      <span style="display:inline-flex;align-items:center;gap:8px;margin-left:4px">
+        <span style="background:#dcfce7;color:#16a34a;padding:1px 8px;border-radius:10px;font-size:.75rem;font-weight:700">&#10003; Done</span>
+        <span style="background:#fee2e2;color:#dc2626;padding:1px 8px;border-radius:10px;font-size:.75rem;font-weight:700">&#10005; Missing</span>
+      </span>
+    </p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="macTabs"></div>
+    <div id="macGridWrap" style="overflow-x:auto;max-height:480px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px"></div>
+  </div>
+
   <div class="chart-container"><h3>Average Score by Audit Type</h3><canvas id="chartByType"></canvas></div>
   <div class="chart-container"><h3>Average Score by Room</h3><canvas id="chartByRoom"></canvas></div>
   <div class="chart-container"><h3>Weekly Compliance Trend</h3><canvas id="chartTrend"></canvas></div>
@@ -3338,6 +3354,193 @@ function initDashboard() {
   loadDashboard();
 }
 
+// ===== MONTHLY AUDIT COVERAGE =====
+let macData = {};
+
+async function renderMonthlyAuditCoverage() {
+  const panel = document.getElementById('monthlyAuditPanel');
+  if (!panel) return;
+  try {
+    const { data: audits, error } = await sb.from('audits')
+      .select('audit_type, room, audit_date')
+      .not('audit_type', 'eq', 'daily_compliance')
+      .order('audit_date');
+    if (error) throw error;
+    if (!audits || audits.length === 0) { panel.style.display = 'none'; return; }
+
+    const TYPES = [
+      { key: 'licensing',      label: 'Childcare Licensing',    roomBased: true,  kitchenOnly: false },
+      { key: 'ahs',            label: 'AHS Audit',              roomBased: true,  kitchenOnly: false },
+      { key: 'kitchen',        label: 'Kitchen Audit',          roomBased: false, kitchenOnly: true  },
+      { key: 'pedagogy',       label: 'Programming & Pedagogy', roomBased: true,  kitchenOnly: false },
+      { key: 'admin_facility', label: 'Admin & Facility',       roomBased: false, kitchenOnly: false },
+    ];
+
+    // Earliest audit date → generate month list up to today
+    let earliestDate = audits.reduce((min, a) => (!a.audit_date ? min : (!min || a.audit_date < min ? a.audit_date : min)), null);
+    if (!earliestDate) { panel.style.display = 'none'; return; }
+
+    const now = new Date();
+    const currentMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    const startMonth   = earliestDate.slice(0, 7);
+    const months = [];
+    let y = parseInt(startMonth.slice(0, 4)), mo = parseInt(startMonth.slice(5, 7));
+    const ey = parseInt(currentMonth.slice(0, 4)), em = parseInt(currentMonth.slice(5, 7));
+    while (y < ey || (y === ey && mo <= em)) {
+      months.push(y + '-' + String(mo).padStart(2, '0'));
+      mo++; if (mo > 12) { mo = 1; y++; }
+    }
+
+    // Build per-type coverage
+    macData = {};
+    TYPES.forEach(t => {
+      const typeAudits = audits.filter(a => a.audit_type === t.key);
+      const covered    = new Set();
+      const seenRooms  = new Set();
+
+      typeAudits.forEach(a => {
+        if (!a.audit_date) return;
+        const month = a.audit_date.slice(0, 7);
+        if (t.roomBased) {
+          const room = a.room || 'Unknown';
+          seenRooms.add(room);
+          covered.add(room + '::' + month);
+        } else {
+          covered.add(month);
+        }
+      });
+
+      // Determine room list from lookupClassrooms (consistent naming)
+      let rooms = [];
+      if (t.roomBased) {
+        rooms = (lookupClassrooms || [])
+          .map(c => c.name)
+          .filter(n => !n.toLowerCase().includes('kitchen'))
+          .sort();
+        // Include any rooms found in actual data that aren't in lookupClassrooms
+        seenRooms.forEach(r => { if (!rooms.includes(r)) rooms.push(r); });
+      }
+
+      macData[t.key] = { label: t.label, roomBased: t.roomBased, rooms, months, covered };
+    });
+
+    // Build tab buttons
+    const tabsEl = document.getElementById('macTabs');
+    tabsEl.innerHTML = '';
+    TYPES.forEach((t, i) => {
+      const hasData = audits.some(a => a.audit_type === t.key);
+      if (!hasData) return;
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-sm';
+      btn.id = 'macTab_' + t.key;
+      btn.textContent = t.label;
+      btn.onclick = () => macTab(t.key);
+      btn.style.cssText = i === 0 ? 'background:var(--primary);color:#fff;font-weight:600' : 'background:#e5e7eb;color:#374151';
+      tabsEl.appendChild(btn);
+    });
+
+    panel.style.display = '';
+    const firstTab = TYPES.find(t => audits.some(a => a.audit_type === t.key));
+    if (firstTab) {
+      // Reset all tabs to default style, then activate first
+      document.querySelectorAll('[id^="macTab_"]').forEach(b => b.style.cssText = 'background:#e5e7eb;color:#374151');
+      const fb = document.getElementById('macTab_' + firstTab.key);
+      if (fb) fb.style.cssText = 'background:var(--primary);color:#fff;font-weight:600';
+      renderMACGrid(firstTab.key);
+    }
+  } catch(err) {
+    console.warn('Monthly audit coverage error:', err.message);
+  }
+}
+
+function macTab(type) {
+  document.querySelectorAll('[id^="macTab_"]').forEach(btn => {
+    btn.style.cssText = btn.id === 'macTab_' + type
+      ? 'background:var(--primary);color:#fff;font-weight:600'
+      : 'background:#e5e7eb;color:#374151';
+  });
+  renderMACGrid(type);
+}
+
+function renderMACGrid(type) {
+  const wrap = document.getElementById('macGridWrap');
+  if (!wrap || !macData[type]) return;
+  const d = macData[type];
+  const months = d.months;
+  const now = new Date();
+  const currentMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+
+  const monthLabel = m => {
+    const [yr, mo] = m.split('-');
+    return new Date(+yr, +mo - 1, 1).toLocaleDateString('en-CA', { month: 'short', year: 'numeric' });
+  };
+
+  if (d.roomBased && d.rooms.length > 0) {
+    // Table: rows = classrooms, columns = months (oldest → newest)
+    let html = '<table style="border-collapse:collapse;width:100%;font-size:.75rem">';
+    html += '<thead><tr style="background:#f3f4f6;position:sticky;top:0;z-index:2">';
+    html += '<th style="text-align:left;padding:7px 10px;white-space:nowrap;border-bottom:2px solid #d1d5db;min-width:140px;background:#f3f4f6">Classroom</th>';
+    months.forEach(m => {
+      const isCur = m === currentMonth;
+      html += '<th style="text-align:center;padding:4px 2px;border-bottom:2px solid #d1d5db;min-width:60px;white-space:nowrap;' +
+        (isCur ? 'background:#dbeafe;color:#1d4ed8;font-weight:700' : 'background:#f3f4f6') + '">' + escHtml(monthLabel(m)) + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+
+    d.rooms.forEach((room, ri) => {
+      html += '<tr style="background:' + (ri % 2 === 0 ? '#fff' : '#f9fafb') + ';border-bottom:1px solid #e5e7eb">';
+      html += '<td style="padding:5px 10px;white-space:nowrap;font-weight:500;position:sticky;left:0;background:' + (ri % 2 === 0 ? '#fff' : '#f9fafb') + '">' + escHtml(room) + '</td>';
+      months.forEach(m => {
+        const isFuture = m > currentMonth;
+        const done     = d.covered.has(room + '::' + m);
+        const isCur    = m === currentMonth;
+        if (isFuture) {
+          html += '<td style="text-align:center;color:#d1d5db;' + (isCur ? 'background:#eff6ff' : '') + '">—</td>';
+        } else {
+          html += '<td style="text-align:center;' + (isCur ? 'background:#eff6ff' : '') + '">' +
+            (done
+              ? '<span style="color:#16a34a;font-size:.85rem;font-weight:700">&#10003;</span>'
+              : '<span style="display:inline-block;background:#fee2e2;color:#dc2626;width:18px;height:18px;border-radius:50%;line-height:18px;font-size:.65rem;font-weight:700;text-align:center">&#10005;</span>') +
+            '</td>';
+        }
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+
+  } else {
+    // Simple vertical list: rows = months (newest first), Status column
+    let html = '<table style="border-collapse:collapse;width:100%;font-size:.82rem">';
+    html += '<thead><tr style="background:#f3f4f6;position:sticky;top:0;z-index:2">';
+    html += '<th style="text-align:left;padding:8px 14px;border-bottom:2px solid #d1d5db;min-width:160px">Month</th>';
+    html += '<th style="text-align:center;padding:8px 14px;border-bottom:2px solid #d1d5db;width:140px">Status</th>';
+    html += '</tr></thead><tbody>';
+
+    [...months].reverse().forEach((m, ri) => {
+      const isFuture = m > currentMonth;
+      const isCur    = m === currentMonth;
+      const done     = d.covered.has(m);
+      html += '<tr style="background:' + (ri % 2 === 0 ? '#fff' : '#f9fafb') + ';border-bottom:1px solid #e5e7eb">';
+      html += '<td style="padding:6px 14px;' + (isCur ? 'font-weight:700' : '') + '">' +
+        (isCur ? '<span style="background:#dbeafe;color:#1d4ed8;border-radius:4px;padding:1px 6px;font-size:.68rem;font-weight:700;margin-right:5px">NOW</span>' : '') +
+        escHtml(monthLabel(m)) + '</td>';
+      if (isFuture) {
+        html += '<td style="text-align:center;color:#9ca3af">—</td>';
+      } else {
+        html += '<td style="text-align:center">' +
+          (done
+            ? '<span style="background:#dcfce7;color:#16a34a;padding:3px 12px;border-radius:10px;font-weight:700;font-size:.76rem">&#10003; Done</span>'
+            : '<span style="background:#fee2e2;color:#dc2626;padding:3px 12px;border-radius:10px;font-weight:700;font-size:.76rem">&#10005; Missing</span>') +
+          '</td>';
+      }
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+  }
+}
+
 function renderDailyComplianceGrid(dcAudits, fromDateStr, toDateStr) {
   const panel   = document.getElementById('dailyCompliancePanel');
   const wrap    = document.getElementById('dcGridWrap');
@@ -4078,6 +4281,9 @@ async function loadDashboard() {
 
     // Daily Compliance coverage grid (always shown, separate from type filter)
     renderDailyComplianceGrid(dcData || [], fromDate, toDate);
+
+    // Monthly Audit Coverage (retroactive, all types except daily)
+    renderMonthlyAuditCoverage();
 
     // NCR Trends
     renderNCRTrends(fromDate, toDate);
