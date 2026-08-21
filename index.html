@@ -3357,7 +3357,7 @@ function initDashboard() {
 // ===== MONTHLY AUDIT COVERAGE =====
 let macData = {};
 
-async function renderMonthlyAuditCoverage(fromDate, toDate) {
+async function renderMonthlyAuditCoverage() {
   const panel = document.getElementById('monthlyAuditPanel');
   if (!panel) return;
   try {
@@ -3422,14 +3422,7 @@ async function renderMonthlyAuditCoverage(fromDate, toDate) {
         seenRooms.forEach(r => { if (!rooms.includes(r) && !EXCLUDED.includes(r)) rooms.push(r); });;
       }
 
-      // Filter displayed months to match dashboard date filter if set
-      const fromM = fromDate ? fromDate.slice(0, 7) : null;
-      const toM   = toDate   ? toDate.slice(0, 7)   : null;
-      const displayMonths = (fromM || toM)
-        ? months.filter(m => (!fromM || m >= fromM) && (!toM || m <= toM))
-        : months;
-
-      macData[t.key] = { label: t.label, roomBased: t.roomBased, rooms, months: displayMonths, covered };
+      macData[t.key] = { label: t.label, roomBased: t.roomBased, rooms, months, covered };
     });
 
     // Build tab buttons — always show all 5 tabs
@@ -3465,9 +3458,17 @@ function renderMACGrid(type) {
   const wrap = document.getElementById('macGridWrap');
   if (!wrap || !macData[type]) return;
   const d = macData[type];
-  const months = d.months;
   const now = new Date();
   const currentMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+
+  // Apply dashboard date filter to limit visible months
+  const fromVal = (document.getElementById('dashFrom') || {}).value || '';
+  const toVal   = (document.getElementById('dashTo')   || {}).value || '';
+  const fromM   = fromVal ? fromVal.slice(0, 7) : '';
+  const toM     = toVal   ? toVal.slice(0, 7)   : '';
+  const months  = d.months.filter(m =>
+    (!fromM || m >= fromM) && (!toM || m <= toM)
+  );
 
   const monthLabel = m => {
     const [yr, mo] = m.split('-');
@@ -4282,7 +4283,7 @@ async function loadDashboard() {
     renderDailyComplianceGrid(dcData || [], fromDate, toDate);
 
     // Monthly Audit Coverage (retroactive, all types except daily)
-    renderMonthlyAuditCoverage(fromDate, toDate);
+    renderMonthlyAuditCoverage();
 
     // NCR Trends
     renderNCRTrends(fromDate, toDate);
