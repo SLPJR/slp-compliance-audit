@@ -584,7 +584,7 @@ input,select,textarea{font-family:inherit;font-size:1rem}
         <span style="background:#fee2e2;color:#dc2626;padding:1px 8px;border-radius:10px;font-size:.75rem;font-weight:700">&#10005; Missing</span>
       </span>
     </p>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="macTabs"></div>
+    <div style="display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;margin-bottom:12px" id="macTabs"></div>
     <div id="macGridWrap" style="overflow-x:auto;max-height:480px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px"></div>
   </div>
 
@@ -3413,9 +3413,10 @@ async function renderMonthlyAuditCoverage() {
       // Determine room list from lookupClassrooms (consistent naming)
       let rooms = [];
       if (t.roomBased) {
+        const EXCLUDED = ['No Nappers Mix Group', 'PUF Room'];
         rooms = (lookupClassrooms || [])
           .map(c => c.name)
-          .filter(n => !n.toLowerCase().includes('kitchen'))
+          .filter(n => !n.toLowerCase().includes('kitchen') && !EXCLUDED.includes(n))
           .sort();
         // Include any rooms found in actual data that aren't in lookupClassrooms
         seenRooms.forEach(r => { if (!rooms.includes(r)) rooms.push(r); });
@@ -3433,7 +3434,7 @@ async function renderMonthlyAuditCoverage() {
       btn.id = 'macTab_' + t.key;
       btn.textContent = t.label;
       btn.onclick = () => macTab(t.key);
-      btn.style.cssText = i === 0 ? 'background:var(--primary);color:#fff;font-weight:600' : 'background:#e5e7eb;color:#374151';
+      btn.style.cssText = (i === 0 ? 'background:var(--primary);color:#fff;font-weight:600' : 'background:#e5e7eb;color:#374151') + ';white-space:nowrap;flex-shrink:0';
       tabsEl.appendChild(btn);
     });
 
@@ -3446,9 +3447,9 @@ async function renderMonthlyAuditCoverage() {
 
 function macTab(type) {
   document.querySelectorAll('[id^="macTab_"]').forEach(btn => {
-    btn.style.cssText = btn.id === 'macTab_' + type
+    btn.style.cssText = (btn.id === 'macTab_' + type
       ? 'background:var(--primary);color:#fff;font-weight:600'
-      : 'background:#e5e7eb;color:#374151';
+      : 'background:#e5e7eb;color:#374151') + ';white-space:nowrap;flex-shrink:0';
   });
   renderMACGrid(type);
 }
