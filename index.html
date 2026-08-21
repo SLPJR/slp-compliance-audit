@@ -3357,7 +3357,7 @@ function initDashboard() {
 // ===== MONTHLY AUDIT COVERAGE =====
 let macData = {};
 
-async function renderMonthlyAuditCoverage() {
+async function renderMonthlyAuditCoverage(fromDate, toDate) {
   const panel = document.getElementById('monthlyAuditPanel');
   if (!panel) return;
   try {
@@ -3418,11 +3418,18 @@ async function renderMonthlyAuditCoverage() {
           .map(c => c.name)
           .filter(n => !n.toLowerCase().includes('kitchen') && !EXCLUDED.includes(n))
           .sort();
-        // Include any rooms found in actual data that aren't in lookupClassrooms
-        seenRooms.forEach(r => { if (!rooms.includes(r)) rooms.push(r); });
+        // Include any rooms found in actual data that aren't in lookupClassrooms (never add excluded rooms)
+        seenRooms.forEach(r => { if (!rooms.includes(r) && !EXCLUDED.includes(r)) rooms.push(r); });;
       }
 
-      macData[t.key] = { label: t.label, roomBased: t.roomBased, rooms, months, covered };
+      // Filter displayed months to match dashboard date filter if set
+      const fromM = fromDate ? fromDate.slice(0, 7) : null;
+      const toM   = toDate   ? toDate.slice(0, 7)   : null;
+      const displayMonths = (fromM || toM)
+        ? months.filter(m => (!fromM || m >= fromM) && (!toM || m <= toM))
+        : months;
+
+      macData[t.key] = { label: t.label, roomBased: t.roomBased, rooms, months: displayMonths, covered };
     });
 
     // Build tab buttons — always show all 5 tabs
@@ -4275,7 +4282,7 @@ async function loadDashboard() {
     renderDailyComplianceGrid(dcData || [], fromDate, toDate);
 
     // Monthly Audit Coverage (retroactive, all types except daily)
-    renderMonthlyAuditCoverage();
+    renderMonthlyAuditCoverage(fromDate, toDate);
 
     // NCR Trends
     renderNCRTrends(fromDate, toDate);
