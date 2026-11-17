@@ -3547,8 +3547,9 @@ function renderDailyComplianceGrid(dcAudits, fromDateStr, toDateStr) {
   const summary = document.getElementById('dcMissingSummary');
   const badge   = document.getElementById('dcMissingBadge');
 
+  const DC_EXCLUDED = ['No Nappers Mix Group', 'PUF Room'];
   const classrooms = lookupClassrooms.map(c => c.name)
-    .filter(n => !n.toLowerCase().includes('kitchen'))
+    .filter(n => !n.toLowerCase().includes('kitchen') && !DC_EXCLUDED.includes(n))
     .sort();
   panel.style.display = '';
 
